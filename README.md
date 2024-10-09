@@ -6,12 +6,7 @@ The script [wallet-issuer.py](https://github.com/mfragkoulis/eudi-web-wallet-moc
 Respectively, the script [wallet-verifier.py](https://github.com/mfragkoulis/eudi-web-wallet-mock/blob/main/wallet-verifier.py) implements the wallet's functionality as per the OIDC4VP standard.
 The documentation that follows also discusses these two implementations and workflows separately.
 
-* [Mock Wallet - Issuer](#mock-wallet---issuer)
-* [Mock Wallet - Verifier](#mock-wallet---verifier)
-
-# Mock Wallet - Issuer
-
-## Installation instructions
+## Common installation instructions
 
 Install required packages in the system.
 
@@ -25,10 +20,15 @@ Setup poetry for dependency management, install dependencies and create certific
 ./install.sh
 ```
 
+* [Mock Wallet - Issuer](#mock-wallet---issuer)
+* [Mock Wallet - Verifier](#mock-wallet---verifier)
+
+# Mock Wallet - Issuer
+
 ## Execution instructions
 
 ```python
-python wallet-issuer.py
+python wallet_issuer.py
 ```
 
 ## Workflow and endpoints
@@ -427,140 +427,42 @@ curl -k --cookie cookies.txt -X POST \
 
 # Mock Wallet - Verifier
 
-**Important!** Before you proceed, please read
-the [EUDI Wallet Reference Implementation project description](https://github.com/eu-digital-identity-wallet/.github/blob/main/profile/reference-implementation.md)
+## Execution instructions
 
-[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://www.apache.org/licenses/LICENSE-2.0)
+The following command runs the happy day presentation flow scenario for a valid vp token.
 
-## Table of contents
-
-* [Overview](#overview)
-* [Disclaimer](#disclaimer)
-* [Presentation Flows](#presentation-flows)
-* [How to build and run](#how-to-build-and-run)
-* [Run all verifier components together](#run-all-verifier-components-together)
-* [Endpoints](#endpoints)
-* [Configuration](#configuration)
-* [How to contribute](#how-to-contribute)
-* [License](#license)
-
- 
-## Overview
-
-This is a Web application (Backend Restful service) that acts as a Verifier/RP trusted end-point. 
-This backend service is accompanied by a Web UI application implemented [here](https://github.com/eu-digital-identity-wallet/eudi-web-verifier). 
-
-See section [Run all verifier components together](#run-all-verifier-components-together) on how to boot both applications together.
-
-Application exposes two APIs
-* [Verifier API](src/main/kotlin/eu/europa/ec/eudi/verifier/endpoint/adapter/input/web/VerifierApi.kt)
-* [Wallet API](src/main/kotlin/eu/europa/ec/eudi/verifier/endpoint/adapter/input/web/WalletApi.kt)
-
-The Verifier API, supports two operations:
-* [Initialize Transaction](src/main/kotlin/eu/europa/ec/eudi/verifier/endpoint/port/input/InitTransaction.kt), where Verifier may define whether it wants to request a SIOP or OpenID4VP or combined request
-* [Get Wallet response](src/main/kotlin/eu/europa/ec/eudi/verifier/endpoint/port/input/GetWalletResponse.kt), where Verifier receives depending on the request an `id_token`, `vp_token`, or an error  
-
-An Open API v3 specification of these operations is available [here](src/main/resources/public/openapi.json).
-
-The Wallet API, provides the following main operations
-* [Get Request Object](src/main/kotlin/eu/europa/ec/eudi/verifier/endpoint/port/input/GetRequestObject.kt) according JWT Secured Authorization Request
-* [Get Presentation Definition](src/main/kotlin/eu/europa/ec/eudi/verifier/endpoint/port/input/GetPresentationDefinition.kt) according to OpenId4VP in case of using `presentation_definition_uri`
-* [Direct Post](src/main/kotlin/eu/europa/ec/eudi/verifier/endpoint/port/input/PostWalletResponse.kt) according to OpenID4VP `direct_post`
-
-Please note that 
-* Both APIs need to be exposed over HTTPS.  
-* Verifier API needs to be protected to allow only authorized access. 
-
-Both of those concerns have not been tackled by the current version of the application, 
-since in its current version is merely a development tool, rather a production application.
-
-## Disclaimer
-
-The released software is a initial development release version: 
--  The initial development release is an early endeavor reflecting the efforts of a short timeboxed period, and by no means can be considered as the final product.  
--  The initial development release may be changed substantially over time, might introduce new features but also may change or remove existing ones, potentially breaking compatibility with your existing code.
--  The initial development release is limited in functional scope.
--  The initial development release may contain errors or design flaws and other problems that could cause system or other failures and data loss.
--  The initial development release has reduced security, privacy, availability, and reliability standards relative to future releases. This could make the software slower, less reliable, or more vulnerable to attacks than mature software.
--  The initial development release is not yet comprehensively documented. 
--  Users of the software must perform sufficient engineering and additional testing in order to properly evaluate their application and determine whether any of the open-sourced components is suitable for use in that application.
--  We strongly recommend to not put this version of the software into production use.
--  Only the latest version of the software will be supported
-
-## How to build and run
-
-To start the service locally you can execute 
-```bash
-./gradlew bootRun
-```
-To build a local docker image of the service execute
-```bash
-./gradlew bootBuildImage
+```python
+python wallet_verifier.py
 ```
 
-## Run all verifier components together
+Instead if set the `vp_token_valid` configuration flag to False in the `wallet_verifier_config.json` configuration file, the execution runs the presentation flow scenario for a revoked vp token.
 
-To start both verifier UI and verifier backend services together a docker compose file has been implemented that can be found [here](docker/docker-compose.yaml)
-Running the command below will start the following service:
-- verifier: The Verifier/RP trusted end-point 
-- verifier-ui: The Verifier's UI application
-- haproxy: A reverse proxy for SSL termination 
-  - To change the ssl certificate update [haproxy.pem](docker/haproxy.pem)  
-  - To reconfigure haproxy update file [haproxy.conf](docker/haproxy.conf)  
-
-To start the docker compose environment
-```bash
-# From project root directory 
-cd docker
-docker-compose up -d
-```
-To stop the docker compose environment
-```bash
-# From project root directory 
-cd docker
-docker-compose down
+```json
+{
+  "vp_token_valid": false
+}
 ```
 
-The 'verifier' service can be configured by setting its configuration properties described [here](#configuration) by setting them as environment 
-variables of the service in [docker-compose.yaml](docker/docker-compose.yaml)  
+Both scenarios use a hardcoded vpToken stored in files in this directory as binary hex strings in CBOR format.
 
-**Example:**
-```yaml
-  verifier:
-    image: ghcr.io/eu-digital-identity-wallet/eudi-srv-web-verifier-endpoint-23220-4-kt:latest
-    container_name: verifier-backend
-    ports:
-      - "8080:8080"
-    environment:
-      VERIFIER_PUBLICURL: "https://10.240.174.10"
-      VERIFIER_RESPONSE_MODE: "DirectPost"
-      VERIFIER_JAR_SIGNING_KEY_KEYSTORE: file:///keystore.jks
+If we want to contact the revocation service and get new (URI, index) pairs, we set the `want_new_revocation_data` to True in the `wallet_verifier_config.json` configuration file as follows.
+
+```json
+{
+  "want_new_revocation_data": true
+}
 ```
 
-### Mount external keystore to be used with Authorization Request signing 
-When property `VERIFIER_JAR_SIGNING_KEY` is set to `LoadFromKeystore` the service can be configured (as described [here](#when-verifier_jar_signing_key-is-set-to-loadfromkeystore-the-following-environment-variables-must-also-be-configured))
-to read from a keystore the certificate used for signing authorization requests. 
-To provide an external keystore mount it to the path designated by the value of property `VERIFIER_JAR_SIGNING_KEY_KEYSTORE`.   
+## Workflow and endpoints
 
-**Example:**
-```yaml
-  verifier:
-    image: ghcr.io/eu-digital-identity-wallet/eudi-srv-web-verifier-endpoint-23220-4-kt:latest
-    container_name: verifier-backend
-    ports:
-      - "8080:8080"
-    environment:
-      VERIFIER_PUBLICURL: "https://10.240.174.10"
-      VERIFIER_RESPONSE_MODE: "DirectPost"
-      VERIFIER_JAR_SIGNING_KEY_KEYSTORE: file:///certs/keystore.jks
-    volumes:
-      - <PATH OF KEYSTORE IN HOST MACHINE>/keystore.jks:/certs/keystore.jks
-      
-```
+[OpenID4VP specification published in 9 August 2024 (Draft 21)](https://openid.net/specs/openid-4-verifiable-presentations-1_0.html)
+![OpenID4VP specification 9 August 2024](figures/openid4vp-spec-2024Aug9.png)
 
-## Presentation Flows
 
-### Same device
+
+### Presentation Flows
+
+#### Same device
 
 ```mermaid
 sequenceDiagram    
@@ -838,158 +740,3 @@ curl http://localhost:8080/ui/presentations/STMMbidoCQTtyk9id5IcoL8CqdC8rxgks5FF
 **Returns:** The log of notable events for the specific presentation.
 
 You can also try it out in [Swagger UI](http://localhost:8080/swagger-ui#/verifier%20api/getPresentationEvents).
-
-## Configuration
-
-The Verifier Endpoint application can be configured using the following *environment* variables:
-
-Variable: `SPRING_WEBFLUX_BASEPATH`  
-Description: Context path for the Verifier Endpoint application.  
-Default value: `/`
-
-Variable: `SERVER_PORT`  
-Description: Port for the HTTP listener of the Verifier Endpoint application  
-Default value: `8080`
-
-Variable: `VERIFIER_CLIENTID`  
-Description: Client Id of the Verifier Endpoint application  
-Default value: `Verifier`
-
-Variable: `VERIFIER_CLIENTIDSCHEME`  
-Description: Client Id Scheme used by the Verifier Endpoint application  
-Possible values: `pre-registered`, `x509_san_dns`, `x509_san_uri`  
-Default value: `pre-registered`
-
-Variable: `VERIFIER_JAR_SIGNING_ALGORITHM`  
-Description: Algorithm used to sign Authorization Request   
-Possible values: Any `Algorithm Name` of an IANA registered asymmetric signature algorithm (i.e. Usage is `alg`):
-https://www.iana.org/assignments/jose/jose.xhtml#web-signature-encryption-algorithms   
-Note: The configured signing algorithm must be compatible with the configured signing key  
-Default value: `RS256`
-
-Variable: `VERIFIER_JAR_SIGNING_KEY`  
-Description: Key to use for Authorization Request signing  
-Possible values: `GenerateRandom`, `LoadFromKeystore`  
-Setting this value to `GenerateRandom` will result in the generation of a random `RSA` key   
-Note: The configured signing key must be compatible with the configured signing algorithm  
-Default value: `GenerateRandom`
-
-Variable: `VERIFIER_PUBLICURL`  
-Description: Public URL of the Verifier Endpoint application  
-Default value: `http://localhost:${SERVER_PORT}`
-
-Variable: `VERIFIER_REQUESTJWT_EMBED`  
-Description: How Authorization Requests will be provided    
-Possible values: `ByValue`, `ByReference`  
-Default value: `ByReference`
-
-Variable: `VERIFIER_JWK_EMBED`  
-Description: How the Ephemeral Keys used for Authorization Response Encryption will be provided in Authorization Requests    
-Possible values: `ByValue`, `ByReference`  
-Default value: `ByReference`
-
-Variable: `VERIFIER_PRESENTATIONDEFINITION_EMBED`  
-Description: How Presentation Definitions will be provided in Authorization Requests    
-Possible values: `ByValue`, `ByReference`  
-Default value: `ByValue`
-
-Variable: `VERIFIER_RESPONSE_MODE`  
-Description: How Authorization Responses are expected    
-Possible values: `DirectPost`, `DirectPostJwt`  
-Default value: `DirectPostJwt`
-
-Variable: `VERIFIER_MAXAGE`  
-Description: TTL of an Authorization Request  
-Notes: Provide a value using Java Duration syntax  
-Example: `PT6400M`  
-Default value: `PT6400M`
-
-Variable: `VERIFIER_PRESENTATIONS_CLEANUP_MAXAGE`  
-Description: Age of Authorization Requests. Authorization Requests older than this, are deleted.     
-Notes: Provide a value using Java Duration syntax  
-Example: `P10D`  
-Default value: `P10D`
-
-Variable: `VERIFIER_CLIENTMETADATA_AUTHORIZATIONSIGNEDRESPONSEALG`  
-Description: Accept only Authorization Responses that are _signed_ using this algorithm  
-Possible values: Any `Algorithm Name` of an IANA registered asymmetric signature algorithm (i.e. Usage is `alg`):
-https://www.iana.org/assignments/jose/jose.xhtml#web-signature-encryption-algorithms
-
-Variable: `VERIFIER_CLIENTMETADATA_AUTHORIZATIONENCRYPTEDRESPONSEALG`  
-Description: Accept only Authorization Responses that are _encrypted_ using this algorithm  
-Possible values: Any `Algorithm Name` of an IANA registered asymmetric encryption algorithm (i.e. Usage is `alg`):
-https://www.iana.org/assignments/jose/jose.xhtml#web-signature-encryption-algorithms  
-Default value: `ECDH-ES`
-
-Variable: `VERIFIER_CLIENTMETADATA_AUTHORIZATIONENCRYPTEDRESPONSEENC`  
-Description: Accept only Authorization Responses that are _encrypted_ using this method  
-Possible values: Any `Algorithm Name` of an IANA registered asymmetric encryption method (i.e. Usage is `enc`):
-https://www.iana.org/assignments/jose/jose.xhtml#web-signature-encryption-algorithms    
-Default value: `A128CBC-HS256`
-
-Variable: `CORS_ORIGINS`  
-Description: Comma separated list of allowed Origins for cross-origin requests  
-Default value: `*`
-
-Variable: `CORS_ORIGINPATTERNS`  
-Description: Comma separated list of patterns used for more fine grained matching of allowed Origins for cross-origin requests  
-Default value: `*`
-
-Variable: `CORS_METHODS`  
-Description: Comma separated list of HTTP methods allowed for cross-origin requests  
-Default value: `*`
-
-Variable: `CORS_HEADERS`  
-Description: Comma separated list of allowed and exposed HTTP Headers for cross-origin requests  
-Default value: `*`
-
-Variable: `CORS_CREDENTIALS`  
-Description: Whether credentials (i.e. Cookies or Authorization Header) are allowed for cross-origin requests
-Default value: `false`
-
-Variable: `CORS_MAXAGE`  
-Description: Time in seconds of how long pre-flight request responses can be cached by clients  
-Default value: `3600`
-
-### When `VERIFIER_JAR_SIGNING_KEY` is set to `LoadFromKeystore` the following environment variables must also be configured.
-
-Variable: `VERIFIER_JAR_SIGNING_KEY_KEYSTORE`  
-Description: URL of the Keystore from which to load the Key to use for JAR signing  
-Examples: `classpath:keystore.jks`, `file:///keystore.jks`
-
-Variable: `VERIFIER_JAR_SIGNING_KEY_KEYSTORE_TYPE`  
-Description: Type of the Keystore from which to load the Key to use for JAR signing  
-Examples: `jks`, `pkcs12`
-
-Variable: `VERIFIER_JAR_SIGNING_KEY_KEYSTORE_PASSWORD`  
-Description: Password of the Keystore from which to load the Key to use for JAR signing
-
-Variable: `VERIFIER_JAR_SIGNING_KEY_ALIAS`  
-Description: Alias of the Key to use for JAR signing, in the configured Keystore
-
-Variable: `VERIFIER_JAR_SIGNING_KEY_PASSWORD`  
-Description: Password of the Key to use for JAR signing, in the configured Keystore
-
-
-## How to contribute
-
-We welcome contributions to this project. To ensure that the process is smooth for everyone
-involved, follow the guidelines found in [CONTRIBUTING.md](CONTRIBUTING.md).
-
-## License
-
-### License details
-
-Copyright (c) 2023 European Commission
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
