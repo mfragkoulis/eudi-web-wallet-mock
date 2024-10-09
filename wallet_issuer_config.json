@@ -1,5 +1,5 @@
 {
-	"client_id": "mock-wallet",
+	"client_id": "mock-wallet<->issuer",
 	"issuer_url": "https://83.212.99.99:5000",
 	"auth_endpoint": "https://83.212.99.99:6000/auth",
 	"auth_endpoint_debug": false,

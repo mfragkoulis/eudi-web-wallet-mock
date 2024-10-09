@@ -20,7 +20,7 @@ import urllib
 from urllib.parse import urlparse
 import urllib3
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger('mock-wallet')
 logging.basicConfig(level=logging.INFO)
 
 ssl_verify = False
