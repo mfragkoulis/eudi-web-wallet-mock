@@ -1,9 +1,10 @@
 {
 	"client_id": "mock-wallet",
 	"issuer_url": "https://83.212.99.99:5000",
-	"auth_endpoint": "https://83.212.99.99:5000/test_auth",
-	"auth_endpoint_debug": true,
+	"auth_endpoint": "https://83.212.99.99:6000/auth",
+	"auth_endpoint_debug": false,
 	"certificate_private_key_file": "data/ec_private_key.pem",
+	"certificate_file": "data/mock_wallet_cert.pem",
 	"credential_offer_file": "data/credential_offer.json",
 	"credential_data_file": "data/credential_data_pid.json"
 }

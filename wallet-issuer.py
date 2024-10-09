@@ -3,7 +3,7 @@ import base64
 from cryptography.hazmat.primitives import serialization
 from datetime import datetime, timezone
 
-from flask import Flask, jsonify, request, Response
+from flask import Flask, jsonify, make_response, request, Response
 import hashlib
 import json
 import jwt
@@ -15,6 +15,7 @@ import pprint
 import re
 import requests
 import sys
+import time
 import urllib
 from urllib.parse import urlparse
 import urllib3
@@ -35,6 +36,35 @@ set_start_method("fork")
 
 # Run auth endpoint for wallet with Flask in separate process.
 app = Flask(__name__)
+def start_wallet_auth_endpoint() -> Process:
+    auth_endpoint = config['auth_endpoint']
+    parsed_endpoint = urlparse(auth_endpoint)
+    host, port = parsed_endpoint.hostname, parsed_endpoint.port
+    debug = config['auth_endpoint_debug']
+    context = (
+            config['certificate_file'],
+            config['certificate_private_key_file']
+    )
+    kwargs = {
+            'host': host,
+            'port': port,
+            'debug': debug,
+            'ssl_context': context
+    }
+    p = Process(target=app.run, kwargs=kwargs)
+    p.start()
+
+    return p
+
+
+# It would be more polite to send a MultiProcessing.Event to exit.
+def stop_wallet_auth_endpoint(p: Process) -> None:
+    p.terminate()
+    while p.is_alive():
+        time.sleep(1)
+    p.close()
+
+
 @app.route("/auth", methods=["GET"])
 def auth() -> Response:
     logger.info(
@@ -49,7 +79,7 @@ def auth() -> Response:
     json_query_string = urllib.parse.parse_qs(query_string)
     json_params = { (k, v[0]) for k, v in json_query_string.items() }
 
-    log.logger_info.info(f'Json query string: {json_params}')
+    logger.info(f'Json query string: {json_params}')
 
     return make_response(jsonify(json_query_string), 200)
 
@@ -398,12 +428,7 @@ if __name__ == "__main__":
         config = json.load(f)
 
     logger.info("Start wallet auth endpoint in separate process.")
-    auth_endpoint = config['auth_endpoint']
-    parsed_endpoint = urlparse(auth_endpoint)
-    host, port = parsed_endpoint.hostname, parsed_endpoint.port
-    debug = config['auth_endpoint_debug']
-    p = Process(target=app.run, args=(host, port, debug))
-    p.start()
+    p = start_wallet_auth_endpoint()
 
     # Credential offer: Diagram step 1b, document section 4
     state, credential_configuration_ids = get_credential_offer()
@@ -445,4 +470,4 @@ if __name__ == "__main__":
         logger.info("Received credential")
         logger.info(f"{pprint.pprint(credential)}")
 
-    p.join()
+    stop_wallet_auth_endpoint(p)
