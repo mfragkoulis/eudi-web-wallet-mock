@@ -6,7 +6,32 @@ The script [wallet-issuer.py](https://github.com/mfragkoulis/eudi-web-wallet-moc
 Respectively, the script [wallet-verifier.py](https://github.com/mfragkoulis/eudi-web-wallet-mock/blob/main/wallet-verifier.py) implements the wallet's functionality as per the OIDC4VP standard.
 The documentation that follows also discusses these two implementations and workflows separately.
 
-## Mock Wallet - Issuer workflow and endpoints
+* [Mock Wallet - Issuer](#mock-wallet---issuer)
+* [Mock Wallet - Verifier](#mock-wallet---verifier)
+
+# Mock Wallet - Issuer
+
+## Installation instructions
+
+Install required packages in the system.
+
+```bash
+sudo apt-get install -y python3.11 curl
+```
+
+Setup poetry for dependency management, install dependencies and create certificate.
+
+```bash
+./install.sh
+```
+
+## Execution instructions
+
+```python
+python wallet-issuer.py
+```
+
+## Workflow and endpoints
 
 [OpenID4VC specification published in 1 October 2024](https://openid.github.io/OpenID4VCI/openid-4-verifiable-credential-issuance-wg-draft.html)
 ![OpenID4VC specification 1 October 2024](figures/openid4vc-spec-2024Oct1.png)
@@ -400,7 +425,7 @@ curl -k --cookie cookies.txt -X POST \
 }
 ```
 
-# EUDI Verifier Endpoint
+# Mock Wallet - Verifier
 
 **Important!** Before you proceed, please read
 the [EUDI Wallet Reference Implementation project description](https://github.com/eu-digital-identity-wallet/.github/blob/main/profile/reference-implementation.md)
