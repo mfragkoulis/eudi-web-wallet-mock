@@ -27,6 +27,8 @@ Setup poetry for dependency management, install dependencies and create certific
 
 ## Execution instructions
 
+The execution instructions assume that there is an [issuer web application](https//github.com/gfour/eudi-srv-web-issuing-eudiw-py) running at the `issuer_url` configured in the `wallet_issuer_config.json` configuration file.
+
 ```python
 python wallet_issuer.py
 ```
@@ -428,6 +430,8 @@ curl -k --cookie cookies.txt -X POST \
 # Mock Wallet - Verifier
 
 ## Execution instructions
+
+The execution instructions assume that there is a [Verifier backend](https://github.com/grnet/eudi-srv-web-verifier-endpoint-23220-4-kt) running at the `verifier_url` configured in the `wallet_verifier_config.json` configuration file.
 
 The following command runs the happy day presentation flow scenario for a valid vp token.
 
