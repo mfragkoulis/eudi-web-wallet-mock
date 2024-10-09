@@ -9,7 +9,7 @@ The documentation that follows also discusses these two implementations and work
 ## Mock Wallet - Issuer workflow and endpoints
 
 [OpenID4VC specification published in 1 October 2024](https://openid.github.io/OpenID4VCI/openid-4-verifiable-credential-issuance-wg-draft.html)
-![OpenID4VC specification 1 October 2024](openid4vc-spec-2024Oct1.png)
+![OpenID4VC specification 1 October 2024](figures/openid4vc-spec-2024Oct1.png)
 
 ### 1b. Create and receive Credential Offer (Diagram Step 1b, Document Section 4)
 
