@@ -28,6 +28,7 @@ ssl_verify = False
 if not ssl_verify:
     urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 config = {}
+p: Process = None
 
 # Need to inherit unpicklable local objects and
 # internal file descriptors from parent process.
@@ -36,7 +37,8 @@ set_start_method("fork")
 
 # Run auth endpoint for wallet with Flask in separate process.
 app = Flask(__name__)
-def start_wallet_auth_endpoint() -> Process:
+def start_wallet_auth_endpoint() -> None:
+    global p
     auth_endpoint = config['auth_endpoint']
     parsed_endpoint = urlparse(auth_endpoint)
     host, port = parsed_endpoint.hostname, parsed_endpoint.port
@@ -54,11 +56,9 @@ def start_wallet_auth_endpoint() -> Process:
     p = Process(target=app.run, kwargs=kwargs)
     p.start()
 
-    return p
-
 
 # It would be more polite to send a MultiProcessing.Event to exit.
-def stop_wallet_auth_endpoint(p: Process) -> None:
+def stop_wallet_auth_endpoint() -> None:
     p.terminate()
     while p.is_alive():
         time.sleep(1)
@@ -84,6 +84,26 @@ def auth() -> Response:
     return make_response(jsonify(json_query_string), 200)
 
 
+# Issuer uses OpenID Connect Registration.
+def register_wallet() -> dict[str, str]:
+    params = {
+            'redirect_uris': config['auth_endpoint']
+    }
+    r = requests.get(
+            f"{config['issuer_url']}/registration",
+            params=params,
+            verify=ssl_verify
+    )
+    if r.status_code != requests.codes.created: # 201
+        logger.error(f'Wallet registration failed ({r.status_code}). Exit.')
+        wallet_exit()
+    registration = r.json()
+    logger.info("Wallet registration response:")
+    logger.info(f"{pprint.pprint(registration)}")
+
+    return registration
+
+
 # According to the OIDC4VC standard, the issuer can communicate a state
 # identifier via the credential offer. The state can be included by the
 # wallet in the following steps of the flow.
@@ -91,6 +111,7 @@ def get_credential_offer() -> tuple[str, str, list[str]]:
     with open(config["credential_offer_file"]) as f:
         credential_offer = json.load(f)
 
+    # Overrides setting in main config file. Design decision.
     config["issuer_url"] = credential_offer["credential_issuer"]
     issuer_state = credential_offer["grants"]["authorization_code"][
         "issuer_state"
@@ -123,12 +144,18 @@ def retrieve_issuer_metadata(
         f"{issuer_url}/.well-known/openid-credential-issuer", verify=ssl_verify
     )
     issuer_metadata = r.json()
+    if r.status_code != requests.codes.ok: # 200
+        logger.error(f'Issuer metadata failed ({r.status_code}). Exit.')
+        wallet_exit()
     logger.info(f"Issuer metadata keys: {issuer_metadata.keys()}")
     # logger.debug(f'{pprint.pprint(issuer_metadata)}')
 
     r = requests.get(
         f"{issuer_url}/.well-known/openid-configuration", verify=ssl_verify
     )
+    if r.status_code != requests.codes.ok: # 200
+        logger.error(f'Issuer config failed ({r.status_code}). Exit.')
+        wallet_exit()
     issuer_config = r.json()
     logger.info(f"Issuer openid config keys: {issuer_config.keys()}")
     # logger.debug(f'{pprint.pprint(issuer_config)}')
@@ -195,6 +222,9 @@ def auth_request(
         headers=http_headers,
         verify=ssl_verify,
     )
+    if r.status_code != requests.codes.ok: # 200
+        logger.error(f'Pushed authorization failed ({r.status_code}). Exit.')
+        wallet_exit()
     logger.info(f"{r}, {r.reason}, {r.json()}, {r.headers}")
     request_uri = r.json()["request_uri"]
     cookie = r.headers["Set-Cookie"]
@@ -206,6 +236,10 @@ def auth_request(
         "request_uri": request_uri,
     }
     r = s.get(auth_endpoint, params=params, verify=ssl_verify)
+    if r.status_code != requests.codes.ok: # 200
+        logger.error(f'Authorization failed ({r.status_code}). Exit.'
+        )
+        wallet_exit()
 
     return s, code_verifier
 
@@ -224,6 +258,9 @@ def fill_in_forms(
     r = s.get(
         f"{issuer_url}/dynamic/auth_method", data=params, verify=ssl_verify
     )
+    if r.status_code != requests.codes.ok: # 200
+        logger.error(f'Auth method selection failed ({r.status_code}). Exit.')
+        wallet_exit()
     logger.info(f"{r}, {r.headers}")
 
     # FC corresponds to the FormEU country selection shown in the UI.
@@ -245,6 +282,9 @@ def fill_in_forms(
     r = s.post(
         f"{issuer_url}/dynamic/?{url_query}", data=params, verify=ssl_verify
     )
+    if r.status_code != requests.codes.ok: # 200
+        logger.error(f'Country selection failed ({r.status_code}). Exit.')
+        wallet_exit()
 
     # UI page: Enter the data for your EUDI Wallet
     #          Please select your basic information
@@ -254,6 +294,9 @@ def fill_in_forms(
 
     params = params | {"proceed": "Submit"}
     r = s.get(f"{issuer_url}/dynamic/form", data=params, verify=ssl_verify)
+    if r.status_code != requests.codes.ok: # 200
+        logger.error(f'Data entry failed ({r.status_code}). Exit.')
+        wallet_exit()
     # Extract user id of the form <country>.<uuid> from templated HTML
     # page.
     # Example user id: FC.dcb7aaec-fd30-44ad-b431-38769b17b424
@@ -271,6 +314,9 @@ def fill_in_forms(
     r = s.get(
         f"{issuer_url}/dynamic/redirect_wallet", data=params, verify=ssl_verify
     )
+    if r.status_code != requests.codes.ok: # 200
+        logger.error(f'Wallet redirection failed ({r.status_code}). Exit.')
+        wallet_exit()
     auth_params = r.json()
     logger.info(f"auth params: {auth_params}")
 
@@ -292,6 +338,9 @@ def request_token(
         "code_verifier": code_verifier,
     }
     r = s.post(token_endpoint, data=params, verify=ssl_verify)
+    if r.status_code != requests.codes.ok: # 200
+        logger.error(f'Token request failed ({r.status_code}). Exit.')
+        wallet_exit()
     token_data = r.json()
     token = token_data["access_token"]
     token_type = token_data["token_type"]
@@ -347,6 +396,9 @@ def request_credential(
         headers=http_headers,
         verify=ssl_verify,
     )
+    if r.status_code != requests.codes.ok: # 200
+        logger.error(f'Credential request failed ({r.status_code}). Exit.')
+        wallet_exit()
     credential = r.json()
 
     return credential
@@ -416,6 +468,10 @@ def KeyData(key, type):
     return curve_identifier, x, y
 
 
+def wallet_exit() -> None:
+    stop_wallet_auth_endpoint()
+    exit(1)
+
 if __name__ == "__main__":
     logger.info("OIDC4VC draft 14, 1 October 2024")
     logger.info(
@@ -424,11 +480,14 @@ if __name__ == "__main__":
     )
 
     # Load wallet config
-    with open("wallet_config.json") as f:
+    with open("wallet_issuer_config.json") as f:
         config = json.load(f)
 
     logger.info("Start wallet auth endpoint in separate process.")
-    p = start_wallet_auth_endpoint()
+    start_wallet_auth_endpoint()
+
+    # Assume issuer is also wallet provider. Register wallet.
+    registration = register_wallet()
 
     # Credential offer: Diagram step 1b, document section 4
     state, credential_configuration_ids = get_credential_offer()
@@ -470,4 +529,4 @@ if __name__ == "__main__":
         logger.info("Received credential")
         logger.info(f"{pprint.pprint(credential)}")
 
-    stop_wallet_auth_endpoint(p)
+    stop_wallet_auth_endpoint()
