@@ -2,7 +2,7 @@
 
 This is a simple web application that imitates the role of a EUDI wallet in its interactions with a credential issuer as per the OIDC4VC standard and with a verifier of the presentation of credentials as per the OIDC4VP standard.
 Since the wallet's interactions with an issuer are independent of the wallet's interactions with a verifier in two separate workflows specified by the two different standards mentioned above, this segmentation is followed in the implementation of the mock wallet as well.
-The script [wallet-issuer.py](https://github.com/mfragkoulis/eudi-web-wallet-mock/blob/main/wallet-issuer.py) implements the wallet's functionality as per the OIDC4VC standard. It also starts a simple Flask application in a separate process to expose an authorization endpoint required for the workflow.
+The script [wallet-issuer.py](https://github.com/mfragkoulis/eudi-web-wallet-mock/blob/main/wallet-issuer.py) first registers the mock wallet with the registration endpoint of the issuer assuming that the issuer also plays the role of a wallet provider. Then, the script implements the wallet's functionality as per the OIDC4VC standard. It also starts a simple Flask application in a separate process to expose an authorization endpoint required for the workflow.
 Respectively, the script [wallet-verifier.py](https://github.com/mfragkoulis/eudi-web-wallet-mock/blob/main/wallet-verifier.py) implements the wallet's functionality as per the OIDC4VP standard.
 The documentation that follows also discusses these two implementations and workflows separately.
 
@@ -31,6 +31,36 @@ The execution instructions assume that there is an [issuer web application](http
 
 ```python
 python wallet_issuer.py
+```
+
+## Wallet registration with issuer/wallet provider
+
+In the context of this mock wallet, we take advantage of the fact that the issuer features a registration endpoint that listens to OpenID Connect Registration. Accordingly, to implement wallet registration in this mock context, we assume that the issuer also plays the role of a wallet provider and use its registration endpoint to register the wallet.
+
+- _Method_: GET
+- _URL_: https://0.0.0.0/registration
+- _Actor_: [Wallet]()
+
+**Usage:**
+```bash
+curl -k -G -X GET \
+  -d redirect_uris=https://83.212.99.99:6000/auth \
+  'https://83.212.99.99:5000/registration'
+```
+
+**Returns:**
+```json
+{
+  "client_id": "ih16zFwfHKohboszRuYKsQ",
+  "registration_access_token": "VjqJO-VX94RRY3iYl6jJzAhssaWuOpUmz_I89wVHV4o",
+  "registration_client_uri": "https://83.212.99.99/registration_api?client_id=ih16zFwfHKohboszRuYKsQ",
+  "client_id_issued_at": 1728550458,
+  "client_secret": "d23551af11a57f2b2c156aea9bc8c4cbc5cd050af0899f0b5701157f",
+  "client_secret_expires_at": 1731142458,
+  "application_type": "web",
+  "response_types": ["code"],
+  "redirect_uris": ["https://83.212.99.99:6000/auth"]
+}
 ```
 
 ## Workflow and endpoints
