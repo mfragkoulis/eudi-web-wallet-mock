@@ -44,7 +44,7 @@ In an issuer-initiated credential offer, the issuer shares a URI via a QR code t
 
 The credential offer URI looks like this:
 ```
-https://dev.tester.issuer.eudiw.dev/credential_offer?credential_offer={%22credential_issuer%22:%20%22https://83.212.99.99:5000%22,%20%22credential_configuration_ids%22:%20[%22eu.europa.ec.eudi.pid_mdoc%22],%20%22grants%22:%20{%22authorization_code%22:%20{}}}
+https://dev.tester.issuer.eudiw.dev/credential_offer?credential_offer={%22credential_issuer%22:%20%22https://snf-895798.vm.okeanos.grnet.gr:5000%22,%20%22credential_configuration_ids%22:%20[%22eu.europa.ec.eudi.pid_mdoc%22],%20%22grants%22:%20{%22authorization_code%22:%20{}}}
 ```
 
 ### 2. Retrieve issuer metadata (Diagram Step 2, Document Section 10.2)
@@ -68,13 +68,13 @@ The wallet requires the following issuer metadata to carry out the OpenID4VC wor
 
 **Usage:**
 ```bash
-curl -k -X GET 'https://83.212.99.99:5000/.well-known/openid-credential-issuer'
+curl -k -X GET 'https://snf-895798.vm.okeanos.grnet.gr:5000/.well-known/openid-credential-issuer'
 ```
 
 **Returns:**
 ```json
 {
-  "batch_credential_endpoint": "https://83.212.99.99:5000/batch_credential",
+  "batch_credential_endpoint": "https://snf-895798.vm.okeanos.grnet.gr:5000/batch_credential",
   "credential_configurations_supported": {
     "eu.europa.ec.eudi.pid_mdoc": {
       "claims": {
@@ -141,28 +141,28 @@ curl -k -X GET 'https://83.212.99.99:5000/.well-known/openid-credential-issuer'
 
 **Usage:**
 ```bash
-curl -k -X GET 'https://83.212.99.99:5000/.well-known/openid-configuration'
+curl -k -X GET 'https://snf-895798.vm.okeanos.grnet.gr:5000/.well-known/openid-configuration'
 ```
 
 **Returns:**
 ```json
 {
-  "authorization_endpoint": "https://83.212.99.99:5000/authorizationV3",
+  "authorization_endpoint": "https://snf-895798.vm.okeanos.grnet.gr:5000/authorizationV3",
   "claims_parameter_supported": true,
   "code_challenge_methods_supported": [
     "S256"
   ],
-  "credential_endpoint": "https://83.212.99.99:5000/credential",
+  "credential_endpoint": "https://snf-895798.vm.okeanos.grnet.gr:5000/credential",
   "grant_types_supported": [
     "authorization_code",
     "implicit",
     "urn:ietf:params:oauth:grant-type:jwt-bearer",
     "refresh_token"
   ],
-  "issuer": "https://83.212.99.99:5000",
-  "jwks_uri": "https://83.212.99.99:5000/static/jwks.json",
-  "pushed_authorization_request_endpoint": "https://83.212.99.99:5000/pushed_authorizationv2",
-  "registration_endpoint": "https://83.212.99.99:5000/registration",
+  "issuer": "https://snf-895798.vm.okeanos.grnet.gr:5000",
+  "jwks_uri": "https://snf-895798.vm.okeanos.grnet.gr:5000/static/jwks.json",
+  "pushed_authorization_request_endpoint": "https://snf-895798.vm.okeanos.grnet.gr:5000/pushed_authorizationv2",
+  "registration_endpoint": "https://snf-895798.vm.okeanos.grnet.gr:5000/registration",
   "request_object_signing_alg_values_supported": [
     "RS256",
     "RS384",
@@ -183,8 +183,8 @@ curl -k -X GET 'https://83.212.99.99:5000/.well-known/openid-configuration'
   "scopes_supported": [
     "openid"
   ],
-  "token_endpoint": "https://83.212.99.99:5000/token",
-  "userinfo_endpoint": "https://83.212.99.99:5000/userinfo",
+  "token_endpoint": "https://snf-895798.vm.okeanos.grnet.gr:5000/token",
+  "userinfo_endpoint": "https://snf-895798.vm.okeanos.grnet.gr:5000/userinfo",
   "userinfo_signing_alg_values_supported": [
     "RS256",
     "RS384",
@@ -213,7 +213,7 @@ curl -k -X GET 'https://83.212.99.99:5000/.well-known/openid-configuration'
 **Usage:**
 ```bash
 curl -k --cookie-jar cookies.txt \
-     -X POST 'https://83.212.99.99:5000/pushed_authorizationv2' \
+     -X POST 'https://snf-895798.vm.okeanos.grnet.gr:5000/pushed_authorizationv2' \
      -H "Accept: application/json" \
      -H "Accept-Charset: UTF-8" \
      -H "Content-Type: application/x-www-form-urlencoded; charset=utf-8" \
@@ -224,7 +224,7 @@ curl -k --cookie-jar cookies.txt \
      --data-urlencode "client_id=mock-wallet" \
      --data-urlencode "scope=eu.europa.ec.eudi.pid.1" \
      --data-urlencode "state=QusipItJDU1Fb3FCK3dZPZOi3N50QE0xtppB334S36U" \
-     --data-urlencode "redirect_uri=https://83.212.99.99:6000/auth"
+     --data-urlencode "redirect_uri=https://snf-895798.vm.okeanos.grnet.gr:6000/auth"
 ```
 
 **Returns:**
@@ -251,7 +251,7 @@ curl -k -G --cookie cookies.txt -X GET \
   -d client_id=mock-wallet \
   -d state=QusipItJDU1Fb3FCK3dZPZOi3N50QE0xtppB334S36U \
   -d request_uri=urn:uuid:65207d6c-3fd4-470b-813c-8cc23f51af36 \
-  'https://83.212.99.99:5000/authorizationV3'
+  'https://snf-895798.vm.okeanos.grnet.gr:5000/authorizationV3'
 ```
 
 **Returns:**
@@ -260,7 +260,7 @@ curl -k -G --cookie cookies.txt -X GET \
 <html lang=en>
 <title>Redirecting...</title>
 <h1>Redirecting...</h1>
-<p>You should be redirected automatically to the target URL: <a href="https://83.212.99.99:5000/auth_choice">https://83.212.99.99:5000/auth_choice</a>. If not, click the link.
+<p>You should be redirected automatically to the target URL: <a href="https://snf-895798.vm.okeanos.grnet.gr:5000/auth_choice">https://snf-895798.vm.okeanos.grnet.gr:5000/auth_choice</a>. If not, click the link.
 ```
 
 At this point, the flow would open a UI page in the browser to select authentication method.
@@ -277,7 +277,7 @@ We choose to authenticate based on country by submitting a form with the suitabl
 ```bash
 curl -k --cookie cookies.txt -X GET \
   -d optionsRadios=link2 \
-  'https://83.212.99.99:5000/dynamic/auth_method'
+  'https://snf-895798.vm.okeanos.grnet.gr:5000/dynamic/auth_method'
 ```
 
 **Returns:** HTML page
@@ -300,7 +300,7 @@ curl -k --cookie cookies.txt -X POST \
   --data-urlencode 'authorization_details={
   "type": "openid_credential"
   "credential_configuration_id": "eu.europa.ec.eudi.pid_mdoc"}' \
-  'https://83.212.99.99:5000/dynamic/'
+  'https://snf-895798.vm.okeanos.grnet.gr:5000/dynamic/'
 ```
 
 **Returns:** HTML page
@@ -323,7 +323,7 @@ curl -k --cookie cookies.txt -X GET \
   -d birth_date=2024-10-03 \
   -d age_over_18=off \
   -d proceed=Submit \
-  'https://83.212.99.99:5000/dynamic/form'
+  'https://snf-895798.vm.okeanos.grnet.gr:5000/dynamic/form'
 ```
 
 **Returns:** HTML page
@@ -348,14 +348,14 @@ The redirection leads to the wallet's auth endpoint, which in the case of this m
 ```bash
 curl -k --cookie cookies.txt -X GET \
   -d user_id=FC.4858c36d-98d8-417a-bc17-3f529da8000e \
-  'https://83.212.99.99:5000/dynamic/redirect_wallet'
+  'https://snf-895798.vm.okeanos.grnet.gr:5000/dynamic/redirect_wallet'
 ```
 
 **Returns:**
 ```json
 {
   "state": "QusipItJDU1Fb3FCK3dZPZOi3N50QE0xtppB334S36U",
-  "iss": "https://83.212.99.99",
+  "iss": "https://snf-895798.vm.okeanos.grnet.gr",
   "client_id": "mock-wallet",
   "code": "Z0FBQUFBQm5BLWhsZzYzbW90Z0xrWUE4UHBtWHhLOUNQSU05d1FwN3RYRUp5X2dxV051Mjluc2Z5NnpzRTJHSmRidER0UWJUNWRreS1rcFJVaDg5elhmZTVwU0RtNXBhS1Fzcl95ZVlrdmFKVWpWZDZTV3AzVC1RVDIwem0xZGdVd3E0WmY3aWRqOFBkXzRGbXlzYjktRksxVjFWRF84OTA5Q1E5ZkZ6Q245b000d082cWZLMTRkamI4SmY4UFlHT1M4VEFTTm5oaWF5aUxMeEh1R201MVdfaFltZXlHaV9QNG80cFFJSkRXOTdtYzJZQ1lyS2VQaFlsZFNzb1JYV3lOMm1Edk1jSjN1RnRKSlhGTWxoVkNMX1lQNG1kRnBvei1sYThSUk82blRPUk5kMkE3NTRwOGhCdnRPWllXX0I4WjVGRmxQazVZTEJxSDliUTdXUUdMb0hXek1DZWotdUlwd2pJR0ZuZ0RrZTZJenVyRWM3NFVYM2VCOGRycVlhbUFCelRsU0NLTGJBaFFWS3YxRW5hQVB6RDJVbmQyUlFYVHA0Y2F1WmZLTWQ0WVpvZjY1SW1IaFVveEJaQ3lsajNySVpBQ0FhZWYza19nVnE0WWpsRW92Ym1XbGU5eENUVzRvTkwzQXRNVnkwZzhldk9EeGxiR3JRb3FMbGZBelFUNFdJSG9SbFJscXowbW11clBRaEY5akRCYjlKX2s3TjVyT1BReUNDZUFZVElYZmtKUXlLX1BZZWRXdlMxSG51djRlRkRVRW5wY1FWUzRVZ1hwYXN4d3huLTY0UkxHNTBCLVl0cTRoRlBVQ2RfVm1LcFU5RGVDX0xMd21fYlBmbHY3Q2VtNG1ZSFBSb01fYW5VOEZVeFJDRHFZcXZoYXJ2bEdyT0pXb1FEMXRiODdoMVRFa1NRRkZTcnNtWGhOTTVZNHlSX1pZM0ZtQ1h1VkhZZTBNNDJ6NGM5QV9PZkptck93PT0%3D"
 }
@@ -374,10 +374,10 @@ At this tep, we use the code returned by the previous request to receive an acce
 curl -k --cookie cookies.txt -X POST \
   -d grant_type=authorization_code \
   -d client_id=mock-wallet \
-  -d redirect_uri=https://83.212.99.99:6000/auth \
+  -d redirect_uri=https://snf-895798.vm.okeanos.grnet.gr:6000/auth \
   -d code_verifier=IPWeeA04h_i604EY_U3WUUabCi5cf3qrI4-iynOAwbY \
   -d code=Z0FBQUFBQm1fdXk3ZHVRNS16eFZZQ3FOdmRDTXdBVW1hNlR1dnVadGlJTjlkZ2xic3cwNEM2Wktub3FQSThKMktBdl9GdlFqRHZ2V3B1SVlKVk9kb2hBMjlDeFUwbGJoM0RjWUctV1JvdEFjWXdzUmVoNWVYUlN1M3dEWmRCZHZWMnB2cmJva2psUXh1bEQ0TGJuaG9JOGJCekRFYjczY1pLY18yMi1wYUtCUzFIUUkybWs2SGotTUFrTW9POC15YVNBQkU0NloxSjQtYnJiZUdSeE8wTzdUYnNWTUh1U1BJWTdRLUdwbVFhRnlFaW1hU1RjSjVOSGIzWkR1aXBUNlRrZ2s3UC11Ti1ZSTQtQmZlWUZmZUxhUUFtRUpGQ0I3RlNFN1FBLUY0S05qdG9iVzd3T01BdmlKZ1dyT3hiTmtlNTZ3TERtVmlDWGtYMG01cmNyME4tYlNYNXFGYVdySzdCTENmMFIyaWJZQVpoX1FZVVlMY3gyUzRLcTJEbXBHVjRnTl93LVd3bmRNSFdULXZtV044dGlmdkNxbHpOamV2YTkwaTJSaGJaY3dLSkctN0prWG15RzlCMHJ3T3o3Mk1sTzNKUlJpR0l3QnhfQ3BDQ044cVhQeVVTOEozTkg2eG9mYnpSUk53bHRxNE92NHlabGh1cGVlX2NtbW5uWGZ2eFBadzk1WkowbEZvemNDLWhsVlNVT2NQVVNCZ1V6SXhkYndzWVJieEluRGxlME1hT1BvU2liandRalJTeHdCZTRUencxQ2l6cDZCaXREZzc2NlFyanJtVG5MYnFsLV83d3lGU0Y4X3BMUkpaeHVCU194MHJOQTJrV0Z3WTNqT3BYSFNnb3BFQllMY2twV3lLN1g5WGdNeW9nVlhtcUR1V19wUTB0Sm1MTUtrTS1fSlR4RnBCb2ZCSVVKYV9QdlZOU2J6WWY4Rk5Zb19CX3ZJS21SbUNmV2Zoem9sRUJLUlRRPT0= \
-  'https://83.212.99.99:5000/token'
+  'https://snf-895798.vm.okeanos.grnet.gr:5000/token'
 ```
 
 **Returns:**
@@ -414,7 +414,7 @@ curl -k --cookie cookies.txt -X POST \
       "proof_type": "jwt",
       "jwt": "eyJ0eXAiOiJvcGVuaWQ0dmNpLXByb29mK2p3dCIsImFsZyI6IkVTMjU2IiwiandrIjp7Imt0eSI6IkVDIiwiY3J2IjoiUC0yNTYiLCJ4IjoiNDk2aUlQOU5HWWFCQU1EdkpTazgzY1NVSkhsT1liMkJDMHhyOXRJcXJtVSIsInkiOiJ3YWtYNGNaQ2Ytemp0YTc4YVFuSmZhd1VOUzNoaHN6UEFWTVFGTEgtZGJNIn19.eyJpc3MiOiJ3YWxsZXQtZGV2IiwiYXVkIjoiaHR0cHM6Ly84My4yMTIuOTkuOTk6NTAwMCIsIm5vbmNlIjoiTTN0Rm5SUTljSnZadlUxU1FieDc0ZyIsImlhdCI6MTcyNzk4Mjc4NH0.l-iC7Xzgm2sWLlaDXx3GODh4gKhP7CjwLZkRfHJNWWSbaqA8gnz5D3DlVc8T7VdfGSEWfcY9qVPRkVo6wgRkOQ"
     }
-  }' 'https://83.212.99.99:5000/credential'
+  }' 'https://snf-895798.vm.okeanos.grnet.gr:5000/credential'
 ```
 
 **Returns:**
