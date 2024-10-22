@@ -20,7 +20,7 @@ import urllib
 from urllib.parse import urlparse
 import urllib3
 
-logger = logging.getLogger('mock-wallet')
+logger = logging.getLogger("mock-wallet")
 logging.basicConfig(level=logging.INFO)
 
 ssl_verify = False
@@ -37,21 +37,23 @@ set_start_method("fork")
 
 # Run auth endpoint for wallet with Flask in separate process.
 app = Flask(__name__)
+
+
 def start_wallet_auth_endpoint() -> None:
     global p
-    auth_endpoint = config['auth_endpoint']
+    auth_endpoint = config["auth_endpoint"]
     parsed_endpoint = urlparse(auth_endpoint)
     host, port = parsed_endpoint.hostname, parsed_endpoint.port
-    debug = config['auth_endpoint_debug']
+    debug = config["auth_endpoint_debug"]
     context = (
-            config['certificate_file'],
-            config['certificate_private_key_file']
+        config["certificate_file"],
+        config["certificate_private_key_file"],
     )
     kwargs = {
-            'host': host,
-            'port': port,
-            'debug': debug,
-            'ssl_context': context
+        "host": host,
+        "port": port,
+        "debug": debug,
+        "ssl_context": context,
     }
     p = Process(target=app.run, kwargs=kwargs)
     p.start()
@@ -67,35 +69,29 @@ def stop_wallet_auth_endpoint() -> None:
 
 @app.route("/auth", methods=["GET"])
 def auth() -> Response:
-    logger.info(
-         f"Wallet auth: Received URL: {request.url}"
-    )
+    logger.info(f"Wallet auth: Received URL: {request.url}")
 
     try:
-         query_string = request.url.split('?')[1]
+        query_string = request.url.split("?")[1]
     except IndexError:
         return Response(status=400)
 
     json_query_string = urllib.parse.parse_qs(query_string)
-    json_params = { (k, v[0]) for k, v in json_query_string.items() }
+    json_params = {(k, v[0]) for k, v in json_query_string.items()}
 
-    logger.info(f'Json query string: {json_params}')
+    logger.info(f"Json query string: {json_params}")
 
     return make_response(jsonify(json_query_string), 200)
 
 
 # Issuer uses OpenID Connect Registration.
 def register_wallet() -> dict[str, str]:
-    params = {
-            'redirect_uris': config['auth_endpoint']
-    }
+    params = {"redirect_uris": config["auth_endpoint"]}
     r = requests.get(
-            f"{config['issuer_url']}/registration",
-            params=params,
-            verify=ssl_verify
+        f"{config['issuer_url']}/registration", params=params, verify=ssl_verify
     )
-    if r.status_code != requests.codes.created: # 201
-        logger.error(f'Wallet registration failed ({r.status_code}). Exit.')
+    if r.status_code != requests.codes.created:  # 201
+        logger.error(f"Wallet registration failed ({r.status_code}). Exit.")
         wallet_exit()
     registration = r.json()
     logger.info("Wallet registration response:")
@@ -144,8 +140,8 @@ def retrieve_issuer_metadata(
         f"{issuer_url}/.well-known/openid-credential-issuer", verify=ssl_verify
     )
     issuer_metadata = r.json()
-    if r.status_code != requests.codes.ok: # 200
-        logger.error(f'Issuer metadata failed ({r.status_code}). Exit.')
+    if r.status_code != requests.codes.ok:  # 200
+        logger.error(f"Issuer metadata failed ({r.status_code}). Exit.")
         wallet_exit()
     logger.info(f"Issuer metadata keys: {issuer_metadata.keys()}")
     # logger.debug(f'{pprint.pprint(issuer_metadata)}')
@@ -153,8 +149,8 @@ def retrieve_issuer_metadata(
     r = requests.get(
         f"{issuer_url}/.well-known/openid-configuration", verify=ssl_verify
     )
-    if r.status_code != requests.codes.ok: # 200
-        logger.error(f'Issuer config failed ({r.status_code}). Exit.')
+    if r.status_code != requests.codes.ok:  # 200
+        logger.error(f"Issuer config failed ({r.status_code}). Exit.")
         wallet_exit()
     issuer_config = r.json()
     logger.info(f"Issuer openid config keys: {issuer_config.keys()}")
@@ -222,8 +218,8 @@ def auth_request(
         headers=http_headers,
         verify=ssl_verify,
     )
-    if r.status_code != requests.codes.ok: # 200
-        logger.error(f'Pushed authorization failed ({r.status_code}). Exit.')
+    if r.status_code != requests.codes.ok:  # 200
+        logger.error(f"Pushed authorization failed ({r.status_code}). Exit.")
         wallet_exit()
     logger.info(f"{r}, {r.reason}, {r.json()}, {r.headers}")
     request_uri = r.json()["request_uri"]
@@ -236,40 +232,60 @@ def auth_request(
         "request_uri": request_uri,
     }
     r = s.get(auth_endpoint, params=params, verify=ssl_verify)
-    if r.status_code != requests.codes.ok: # 200
-        logger.error(f'Authorization failed ({r.status_code}). Exit.'
-        )
+    if r.status_code != requests.codes.ok:  # 200
+        logger.error(f"Authorization failed ({r.status_code}). Exit.")
         wallet_exit()
 
     return s, code_verifier
 
 
-def fill_in_forms(
+def fill_in_ui_forms(
     s: requests.Session, credential_configuration_id: str
 ) -> dict:
-    issuer_url = config["issuer_url"]
-
-    # link2 corresponds to country selection.
-    params = {"optionsRadios": "link2"}
 
     # UI page: Authentication Method Selection
     #          Please select Authentication Method
     # app/templates/misc/auth_method.html
-    r = s.get(
-        f"{issuer_url}/dynamic/auth_method", data=params, verify=ssl_verify
-    )
-    if r.status_code != requests.codes.ok: # 200
-        logger.error(f'Auth method selection failed ({r.status_code}). Exit.')
-        wallet_exit()
-    logger.info(f"{r}, {r.headers}")
-
-    # FC corresponds to the FormEU country selection shown in the UI.
-    country = "FC"
-    params = {"country": country, "proceed": "Submit"}
+    select_auth_method_country(s)
 
     # UI page: Request credentials for your EUDI Wallet
     #          Please select your country of origin
     # app/templates/dynamic/dynamic-countries.html
+    country = "FC"
+    select_country_origin(s, credential_configuration_id, country)
+
+    # UI page: Enter the data for your EUDI Wallet
+    #          Please select your basic information
+    # app/templates/dynamic/dynamic-form.html
+    user_id = enter_credential_data(s, country)
+
+    # UI page: Authorize data from your EUDI Wallet
+    #          Please confirm your information
+    # app/templates/dynamic/form-authorize.html
+    return confirm_credential_data(s, user_id)
+
+
+def select_auth_method_country(s: requests.Session) -> None:
+    # link2 corresponds to country selection.
+    params = {"optionsRadios": "link2"}
+
+    r = s.get(
+        f"{config['issuer_url']}/dynamic/auth_method",
+        data=params,
+        verify=ssl_verify,
+    )
+    if r.status_code != requests.codes.ok:  # 200
+        logger.error(f"Auth method selection failed ({r.status_code}). Exit.")
+        wallet_exit()
+    logger.info(f"{r}, {r.headers}")
+
+
+def select_country_origin(
+    s: requests.Session, credential_configuration_id: str, country: str
+) -> None:
+    # FC corresponds to the FormEU country selection shown in the UI.
+    params = {"country": country, "proceed": "Submit"}
+
     auth_details = [
         {
             "type": "openid_credential",
@@ -280,23 +296,27 @@ def fill_in_forms(
     parsed_auth_details = urllib.parse.quote(json.dumps(auth_details))
     url_query = f"authorization_details={parsed_auth_details}"
     r = s.post(
-        f"{issuer_url}/dynamic/?{url_query}", data=params, verify=ssl_verify
+        f"{config['issuer_url']}/dynamic/?{url_query}",
+        data=params,
+        verify=ssl_verify,
     )
-    if r.status_code != requests.codes.ok: # 200
-        logger.error(f'Country selection failed ({r.status_code}). Exit.')
+    if r.status_code != requests.codes.ok:  # 200
+        logger.error(f"Country selection failed ({r.status_code}). Exit.")
         wallet_exit()
 
-    # UI page: Enter the data for your EUDI Wallet
-    #          Please select your basic information
-    # app/templates/dynamic/dynamic-form.html
+
+def enter_credential_data(s: requests.Session, country: str) -> str:
     with open(config["credential_data_file"]) as f:
         params = json.load(f)
 
     params = params | {"proceed": "Submit"}
-    r = s.get(f"{issuer_url}/dynamic/form", data=params, verify=ssl_verify)
-    if r.status_code != requests.codes.ok: # 200
-        logger.error(f'Data entry failed ({r.status_code}). Exit.')
+    r = s.get(
+        f"{config['issuer_url']}/dynamic/form", data=params, verify=ssl_verify
+    )
+    if r.status_code != requests.codes.ok:  # 200
+        logger.error(f"Data entry failed ({r.status_code}). Exit.")
         wallet_exit()
+
     # Extract user id of the form <country>.<uuid> from templated HTML
     # page.
     # Example user id: FC.dcb7aaec-fd30-44ad-b431-38769b17b424
@@ -305,17 +325,20 @@ def fill_in_forms(
     )
     user_id = reg_match.group(1)
 
-    # UI page: Authorize data from your EUDI Wallet
-    #          Please confirm your information
-    # app/templates/dynamic/form-authorize.html
+    return user_id
+
+
+def confirm_credential_data(s: requests.Session, user_id: str) -> dict:
     params = {
         "user_id": user_id,
     }
     r = s.get(
-        f"{issuer_url}/dynamic/redirect_wallet", data=params, verify=ssl_verify
+        f"{config['issuer_url']}/dynamic/redirect_wallet",
+        data=params,
+        verify=ssl_verify,
     )
-    if r.status_code != requests.codes.ok: # 200
-        logger.error(f'Wallet redirection failed ({r.status_code}). Exit.')
+    if r.status_code != requests.codes.ok:  # 200
+        logger.error(f"Wallet redirection failed ({r.status_code}). Exit.")
         wallet_exit()
     auth_params = r.json()
     logger.info(f"auth params: {auth_params}")
@@ -338,8 +361,8 @@ def request_token(
         "code_verifier": code_verifier,
     }
     r = s.post(token_endpoint, data=params, verify=ssl_verify)
-    if r.status_code != requests.codes.ok: # 200
-        logger.error(f'Token request failed ({r.status_code}). Exit.')
+    if r.status_code != requests.codes.ok:  # 200
+        logger.error(f"Token request failed ({r.status_code}). Exit.")
         wallet_exit()
     token_data = r.json()
     token = token_data["access_token"]
@@ -396,8 +419,8 @@ def request_credential(
         headers=http_headers,
         verify=ssl_verify,
     )
-    if r.status_code != requests.codes.ok: # 200
-        logger.error(f'Credential request failed ({r.status_code}). Exit.')
+    if r.status_code != requests.codes.ok:  # 200
+        logger.error(f"Credential request failed ({r.status_code}). Exit.")
         wallet_exit()
     credential = r.json()
 
@@ -472,6 +495,7 @@ def wallet_exit() -> None:
     stop_wallet_auth_endpoint()
     exit(1)
 
+
 if __name__ == "__main__":
     logger.info("OIDC4VC draft 14, 1 October 2024")
     logger.info(
@@ -514,7 +538,7 @@ if __name__ == "__main__":
         session, code_verifier = auth_request(
             pushed_auth_endpoint, auth_endpoint, state, scope
         )
-        auth_params = fill_in_forms(session, credential_configuration_id)
+        auth_params = fill_in_ui_forms(session, credential_configuration_id)
 
         # Token: Diagram step 5, document section 6
         token, token_type = request_token(
