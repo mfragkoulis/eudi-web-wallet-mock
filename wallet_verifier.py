@@ -155,7 +155,6 @@ def get_presentation_event_log(presentation_id: str) -> None:
     )
     presentation_events = r.json()
     logger.info(f"{pprint.pprint(presentation_events)}")
-    logger.info("\n")
 
 
 def get_new_revocation_data():
