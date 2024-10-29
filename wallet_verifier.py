@@ -1,6 +1,6 @@
 import base64
 import chardet
-import cbor2
+#import cbor2
 import json
 import logging
 import os
@@ -88,6 +88,13 @@ def send_wallet_response(transaction_id: str) -> str:
         "Accept": "application/json",
     }
 
+    # The reference implementation (RI) does not support VpTokens in CBOR format
+    # at the moment. Hence, we cannot carry out the revocation check without
+    # touching the rest of the implementation. We use a dummy JSON VpToken instead.
+    # Ideally (future work), we would want to create the VpToken in this script rather
+    # than read a CBOR object prepared in the RI of the Verifier backend
+    #src/test/kotlin/eu/europa/ec/eudi/verifier/endpoint/adapter/input/web/MDocCBORTest.kt
+    '''
     if config["vp_token_valid"]:
         with open(config["mdoc_status_list_valid_file"], "rb") as f:
             dumped_mdoc = f.read()
@@ -99,9 +106,11 @@ def send_wallet_response(transaction_id: str) -> str:
 
     urlencoded_mdoc = base64.urlsafe_b64encode(dumped_mdoc)
     logger.info(f"Urlencoded mdoc: {urlencoded_mdoc}")
+    '''
     payload = {
         "state": transaction_id,
-        "vp_token": urlencoded_mdoc,
+        #"vp_token": urlencoded_mdoc,
+        "vp_token": json.dumps({"id": "123456"}),
         "presentation_submission": json.dumps(wallet_response),
     }
 
