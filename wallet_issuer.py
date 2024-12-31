@@ -15,7 +15,6 @@ import os
 import pprint
 import re
 import requests
-import sys
 import time
 import urllib
 from urllib.parse import urlparse
