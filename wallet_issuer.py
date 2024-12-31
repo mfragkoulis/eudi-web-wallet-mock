@@ -93,11 +93,11 @@ def register_wallet() -> dict[str, str]:
     if r.status_code != requests.codes.created:  # 201
         logger.error(f"Wallet registration failed ({r.status_code}). Exit.")
         wallet_exit()
-    registration = r.json()
+    registration_response = r.json()
     logger.info("Wallet registration response:")
-    logger.info(f"{pprint.pprint(registration)}")
+    logger.info(f"{pprint.pprint(registration_response)}")
 
-    return registration
+    return registration_response
 
 
 # According to the OIDC4VC standard, the issuer can communicate a state
