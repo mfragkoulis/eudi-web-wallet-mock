@@ -1,7 +1,9 @@
+import argparse
 import base64
 
 from cryptography.hazmat.primitives import serialization
 from datetime import datetime, timezone
+from enum import Enum
 from typing import Optional
 
 from flask import Flask, jsonify, make_response, request, Response
@@ -29,6 +31,12 @@ if not ssl_verify:
     urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 config = {}
 p: Optional[Process] = None
+
+
+class IssuerType(Enum):
+    REFERENCE_IMPLEMENTATION = 1
+    GRNET = 2
+
 
 # Need to inherit unpicklable local objects and
 # internal file descriptors from parent process.
@@ -181,7 +189,7 @@ def retrieve_issuer_metadata(
 
 def auth_request(
     pushed_auth_endpoint: str, auth_endpoint: str, state: str, scope: list[str]
-) -> tuple[requests.Session, str]:
+) -> tuple[requests.Session, str, Response]:
     logger.info(
         f"Authorize using auth endpoints: {pushed_auth_endpoint},"
         f"{auth_endpoint}"
@@ -212,6 +220,8 @@ def auth_request(
         "state": state,
         "redirect_uri": redirect_uri,
     }
+    if issuer_type == IssuerType.GRNET:
+        params |= {"backend": "dummy", "user_id": "1"}
     r = s.post(
         pushed_auth_endpoint,
         data=params,
@@ -236,7 +246,7 @@ def auth_request(
         logger.error(f"Authorization failed ({r.status_code}). Exit.")
         wallet_exit()
 
-    return s, code_verifier
+    return s, code_verifier, r
 
 
 def fill_in_ui_forms(
@@ -351,6 +361,7 @@ def request_token(
     s: requests.Session,
     auth_params: dict,
     code_verifier: str,
+    issuer_type: IssuerType,
 ) -> tuple[str, str]:
     redirect_uri = config["auth_endpoint"]
     params = {
@@ -360,6 +371,9 @@ def request_token(
         "redirect_uri": redirect_uri,
         "code_verifier": code_verifier,
     }
+    if issuer_type == IssuerType.GRNET:
+        params["client_secret"] = auth_params["client_secret"]
+        params["scope"] = "openid profile eu.europa.ec.eudi.pid.1"
     r = s.post(token_endpoint, data=params, verify=ssl_verify)
     if r.status_code != requests.codes.ok:  # 200
         logger.error(f"Token request failed ({r.status_code}). Exit.")
@@ -378,6 +392,7 @@ def request_credential(
     token_type: str,
     docformat: str,
     doctype: str,
+    issuer_type: IssuerType,
 ) -> dict:
     http_headers = {
         "Accept": "application/json",
@@ -389,6 +404,8 @@ def request_credential(
         "format": docformat,
         "doctype": doctype,
     }
+    if issuer_type == IssuerType.GRNET:
+        params["scope"] = "openid profile eu.europa.ec.eudi.pid.1"
     r = s.post(
         credential_endpoint,
         json=params,
@@ -497,6 +514,17 @@ def wallet_exit() -> None:
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--issuer-type",
+        type=str,
+        default=IssuerType.REFERENCE_IMPLEMENTATION.name,
+        choices=[it.name for it in IssuerType],
+    )
+    args = parser.parse_args()
+
+    issuer_type: IssuerType = IssuerType[args.issuer_type]
+
     logger.info("OIDC4VC draft 14, 1 October 2024")
     logger.info(
         "https://openid.github.io/OpenID4VCI/"
@@ -535,19 +563,26 @@ if __name__ == "__main__":
         )
 
         # Authorization: Diagram step 3, document section 5
-        session, code_verifier = auth_request(
+        session, code_verifier, auth_resp = auth_request(
             pushed_auth_endpoint, auth_endpoint, state, scope
         )
-        auth_params = fill_in_ui_forms(session, credential_configuration_id)
+        if issuer_type == IssuerType.REFERENCE_IMPLEMENTATION:
+            auth_params = fill_in_ui_forms(session, credential_configuration_id)
+        elif issuer_type == IssuerType.GRNET:
+            auth_params = auth_resp.json()
+            auth_params["client_id"] = config["client_id"]
+            auth_params["client_secret"] = config["client_secret"]
+        else:
+            raise RuntimeError(f"Unsupported issuer type: {issuer_type.name}")
 
         # Token: Diagram step 5, document section 6
         token, token_type = request_token(
-            token_endpoint, session, auth_params, code_verifier
+            token_endpoint, session, auth_params, code_verifier, issuer_type
         )
 
         # Credential: Diagram step 6, document section 7
         credential = request_credential(
-            credential_endpoint, session, token, token_type, docformat, doctype
+            credential_endpoint, session, token, token_type, docformat, doctype, issuer_type
         )
 
         logger.info("Received credential")
