@@ -2,6 +2,7 @@ import base64
 
 from cryptography.hazmat.primitives import serialization
 from datetime import datetime, timezone
+from typing import Optional
 
 from flask import Flask, jsonify, make_response, request, Response
 import hashlib
@@ -28,7 +29,7 @@ ssl_verify = False
 if not ssl_verify:
     urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 config = {}
-p: Process = None
+p: Optional[Process] = None
 
 # Need to inherit unpicklable local objects and
 # internal file descriptors from parent process.
@@ -103,7 +104,7 @@ def register_wallet() -> dict[str, str]:
 # According to the OIDC4VC standard, the issuer can communicate a state
 # identifier via the credential offer. The state can be included by the
 # wallet in the following steps of the flow.
-def get_credential_offer() -> tuple[str, str, list[str]]:
+def get_credential_offer() -> tuple[str, list[str]]:
     with open(config["credential_offer_file"]) as f:
         credential_offer = json.load(f)
 
@@ -132,7 +133,7 @@ def get_credential_offer() -> tuple[str, str, list[str]]:
 #       (/.well-known/openid-credential-issuer)
 def retrieve_issuer_metadata(
     credential_configuration_ids: list[str],
-) -> tuple[str, str, tuple[str, str, str, str]]:
+) -> tuple[str, str, str, str, tuple[str, str, str, str]]:
     issuer_url = config["issuer_url"]
     logger.info(f"Retrieve metadata from credential issuer: {issuer_url}")
 
@@ -181,7 +182,7 @@ def retrieve_issuer_metadata(
 
 def auth_request(
     pushed_auth_endpoint: str, auth_endpoint: str, state: str, scope: list[str]
-) -> requests.Session:
+) -> tuple[requests.Session, str]:
     logger.info(
         f"Authorize using auth endpoints: {pushed_auth_endpoint},"
         f"{auth_endpoint}"
