@@ -88,7 +88,7 @@ def auth() -> Response:
 def register_wallet() -> dict[str, str]:
     params = {"redirect_uris": config["auth_endpoint"]}
     r = requests.get(
-        f"{config['issuer_url']}/registration", params=params, verify=ssl_verify
+        config['registration_endpoint'], params=params, verify=ssl_verify
     )
     if r.status_code != requests.codes.created:  # 201
         logger.error(f"Wallet registration failed ({r.status_code}). Exit.")
