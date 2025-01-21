@@ -1,3 +1,4 @@
+import argparse
 import base64
 
 from cryptography.hazmat.primitives import serialization
@@ -169,6 +170,8 @@ def retrieve_issuer_metadata(
         for cred_config_id in credential_configuration_ids
     ]
     logger.info(f"cred_configs: {cred_configs}")
+    if verbose:
+        logger.info(f"issuer_config: {issuer_config}")
 
     return (
         issuer_config["pushed_authorization_request_endpoint"],
@@ -220,6 +223,9 @@ def auth_request(
     )
     if r.status_code != requests.codes.ok:  # 200
         logger.error(f"Pushed authorization failed ({r.status_code}). Exit.")
+        if verbose:
+            logger.error(params)
+            logger.error(r.json())
         wallet_exit()
     logger.info(f"{r}, {r.reason}, {r.json()}, {r.headers}")
     request_uri = r.json()["request_uri"]
@@ -233,6 +239,8 @@ def auth_request(
     }
     r = s.get(auth_endpoint, params=params, verify=ssl_verify)
     if r.status_code != requests.codes.ok:  # 200
+        if verbose:
+            logger.info(r.json())
         logger.error(f"Authorization failed ({r.status_code}). Exit.")
         wallet_exit()
 
@@ -389,6 +397,8 @@ def request_credential(
         "format": docformat,
         "doctype": doctype,
     }
+    if verbose:
+        logger.info(f"credential request params: {params}")
     r = s.post(
         credential_endpoint,
         json=params,
@@ -420,6 +430,8 @@ def request_credential(
         verify=ssl_verify,
     )
     if r.status_code != requests.codes.ok:  # 200
+        if verbose:
+            logger.info(r.json())
         logger.error(f"Credential request failed ({r.status_code}). Exit.")
         wallet_exit()
     credential = r.json()
@@ -497,6 +509,15 @@ def wallet_exit() -> None:
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--verbose",
+        action="store_true",
+        help="Log more information",
+    )
+    args = parser.parse_args()
+    verbose = args.verbose
+
     logger.info("OIDC4VC draft 14, 1 October 2024")
     logger.info(
         "https://openid.github.io/OpenID4VCI/"
@@ -538,6 +559,8 @@ if __name__ == "__main__":
         session, code_verifier = auth_request(
             pushed_auth_endpoint, auth_endpoint, state, scope
         )
+        if verbose:
+            logger.info(f"auth_resp: {auth_resp.json()}")
         auth_params = fill_in_ui_forms(session, credential_configuration_id)
 
         # Token: Diagram step 5, document section 6
