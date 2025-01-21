@@ -1,2 +1,4 @@
 data/ec_private_key.pem
 data/mock_wallet_cert.pem
+.idea/
+.vscode/
