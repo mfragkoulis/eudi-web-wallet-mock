@@ -564,6 +564,8 @@ if __name__ == "__main__":
         session, code_verifier = auth_request(
             pushed_auth_endpoint, auth_endpoint, args.wallet_auth_endpoint, state, scope
         )
+        if verbose:
+            logger.info(f"auth_resp: {auth_resp.json()}")
         auth_params = fill_in_ui_forms(session, credential_configuration_id)
 
         # Token: Diagram step 5, document section 6
