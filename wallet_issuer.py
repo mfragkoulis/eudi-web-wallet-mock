@@ -174,7 +174,7 @@ def retrieve_issuer_metadata(
         issuer_config["pushed_authorization_request_endpoint"],
         issuer_config["authorization_endpoint"],
         issuer_config["token_endpoint"],
-        issuer_config["credential_endpoint"],
+        issuer_metadata["credential_endpoint"],
         cred_configs,
     )
 
