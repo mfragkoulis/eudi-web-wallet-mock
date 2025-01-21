@@ -27,7 +27,7 @@ Setup poetry for dependency management, install dependencies and create certific
 
 ## Execution instructions
 
-The execution instructions assume that there is an [issuer web application](https//github.com/gfour/eudi-srv-web-issuing-eudiw-py) running at the `issuer_url` configured in the `wallet_issuer_config.json` configuration file.
+The execution instructions assume that there is an [issuer web application](https//github.com/gfour/eudi-srv-web-issuing-eudiw-py) running at the `issuer_url` configured via `load_wallet_config()`.
 
 ```python
 python wallet_issuer.py
@@ -97,7 +97,7 @@ curl -k -G -X GET \
 
 ### 1b. Create and receive Credential Offer (Diagram Step 1b, Document Section 4)
 
-In an issuer-initiated credential offer, the issuer shares a URI via a QR code that the wallet can scan and receive. To simplify the flow for the mock wallet at hand, it is assumed that the wallet has scanned the QR code and possesses it. In practice, the Wallet reads from file a credential offer URI that has been offered by the issuer. The URI has been transformed to a JSON file for readability and practicality. The credential offer regards a PID document in mdoc format. See [data/credential_offer.json]().
+In an issuer-initiated credential offer, the issuer shares a URI via a QR code that the wallet can scan and receive. To simplify the flow for the mock wallet at hand, it is assumed that the wallet has scanned the QR code and possesses it. In practice, the Wallet reads from file a credential offer URI that has been offered by the issuer. The URI has been transformed to a JSON file for readability and practicality. The credential offer regards a PID document in mdoc format. See `load_wallet_config()`.
 
 The credential offer URI looks like this:
 ```

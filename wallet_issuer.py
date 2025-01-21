@@ -4,6 +4,7 @@ import hashlib
 import json
 import logging
 import os
+from os.path import dirname, join, realpath
 import pprint
 import re
 import requests
@@ -103,8 +104,7 @@ def register_wallet() -> dict[str, str]:
 # identifier via the credential offer. The state can be included by the
 # wallet in the following steps of the flow.
 def get_credential_offer() -> tuple[str, list[str]]:
-    with open(config["credential_offer_file"]) as f:
-        credential_offer = json.load(f)
+    credential_offer = config["credential_offer"]
 
     # Overrides setting in main config file. Design decision.
     config["issuer_url"] = credential_offer["credential_issuer"]
@@ -507,6 +507,39 @@ def wallet_exit() -> None:
     exit(1)
 
 
+def get_host_ip():
+    dir_path = dirname(realpath(__file__))
+
+    with open(join(dir_path, ".config.ip"), "r") as f:
+        host = f.read().strip()
+    return host
+
+
+def load_wallet_config():
+    host_ip = get_host_ip()
+
+    return {
+        "client_id": "mock-wallet<->issuer",
+        "issuer_url": f"https://{host_ip}:5000",
+        "auth_endpoint": f"https://{host_ip}:6000/auth",
+        "auth_endpoint_debug": False,
+        "certificate_private_key_file": "data/ec_private_key.pem",
+        "certificate_file": "data/mock_wallet_cert.pem",
+        "credential_offer": {
+            "credential_issuer": f"https://{host_ip}:5000",
+            "credential_configuration_ids": [
+                "eu.europa.ec.eudi.pid_mdoc"
+            ],
+            "grants": {
+                "authorization_code": {
+                    "issuer_state": "QusipItJDU1Fb3FCK3dZPZOi3N50QE0xtppB334S36U"
+                }
+            }
+        },
+        "credential_data_file": "data/credential_data_pid.json"
+    }
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument(
@@ -519,13 +552,12 @@ if __name__ == "__main__":
 
     logger.info("OIDC4VC draft 14, 1 October 2024")
     logger.info(
-        "https://openid.github.io/OpenID4VCI/"
+        f"https://openid.github.io/OpenID4VCI/"
         "openid-4-verifiable-credential-issuance-wg-draft.html"
     )
 
     # Load wallet config
-    with open("wallet_issuer_config.json") as f:
-        config = json.load(f)
+    config = load_wallet_config()
 
     logger.info("Start wallet auth endpoint in separate process.")
     start_wallet_auth_endpoint()
