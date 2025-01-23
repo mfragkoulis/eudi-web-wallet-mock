@@ -27,9 +27,15 @@ Setup poetry for dependency management, install dependencies and create certific
 
 ## Execution instructions
 
-The execution instructions assume that there is an [issuer web application](https//github.com/gfour/eudi-srv-web-issuing-eudiw-py) running at the `issuer_url` configured via `load_wallet_config()`.
+Update the host IP so that it can be correctly detected by the application:
 
-```python
+```bash
+./resolve-ip.sh
+```
+
+Run the application:
+
+```bash
 python wallet_issuer.py
 ```
 
