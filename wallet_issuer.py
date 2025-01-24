@@ -310,6 +310,7 @@ def enter_credential_data(s: requests.Session, country: str) -> str:
         params = json.load(f)
 
     params = params | {"proceed": "Submit"}
+    logger.info(f"Credential data: {params}")
     r = s.get(
         f"{config['issuer_url']}/dynamic/form", data=params, verify=ssl_verify
     )
