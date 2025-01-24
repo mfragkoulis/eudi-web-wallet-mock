@@ -33,6 +33,33 @@ The execution instructions assume that there is an [issuer web application](http
 python wallet_issuer.py
 ```
 
+## Types of credentials supported
+
+### PID in mdoc format
+
+Check `data/credential_offer_pid_mdoc.json` and `data/credential_data_pid.json`.
+Set these files in `wallet_issuer_config.json` as follows.
+
+```json
+        "credential_offer_file": "data/credential_offer_pid_mdoc.json",
+        "credential_data_file": "data/credential_data_pid.json"
+```
+
+### mDL in mdoc format
+
+Check `data/credential_offer_mdl_mdoc.json` and `data/credential_data_mdl.json`.
+Set these files in `wallet_issuer_config.json` as follows.
+
+```json
+        "credential_offer_file": "data/credential_offer_mdl_mdoc.json",
+        "credential_data_file": "data/credential_data_mdl.json"
+```
+
+Note that the issuer does not support the loading of an image for an mDL, which is provided in the `portrait` field.
+Instead it only accepts the symbolic values "Port1" and "Port2", which correspond to sample image files stored internally in the issuer in base64 JPEG format.
+
+For an example of an image in base64 JPEG format see `data/credential_data_mdl_image.json`.
+
 ## Wallet registration with issuer/wallet provider
 
 In the context of this mock wallet, we take advantage of the fact that the issuer features a registration endpoint that listens to OpenID Connect Registration. Accordingly, to implement wallet registration in this mock context, we assume that the issuer also plays the role of a wallet provider and use its registration endpoint to register the wallet.
