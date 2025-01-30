@@ -1,7 +1,9 @@
+import argparse
 import base64
 
 from cryptography.hazmat.primitives import serialization
 from datetime import datetime, timezone
+from enum import Enum
 from typing import Optional
 
 from flask import Flask, jsonify, make_response, request, Response
@@ -29,6 +31,12 @@ if not ssl_verify:
     urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 config = {}
 p: Optional[Process] = None
+
+
+class IssuerType(Enum):
+    REFERENCE_IMPLEMENTATION = 1
+    GRNET = 2
+
 
 # Need to inherit unpicklable local objects and
 # internal file descriptors from parent process.
@@ -95,7 +103,7 @@ def register_wallet() -> dict[str, str]:
         wallet_exit()
     registration_response = r.json()
     logger.info("Wallet registration response:")
-    logger.info(f"{pprint.pprint(registration_response)}")
+    logger.info(json.dumps(registration_response, indent=4))
 
     return registration_response
 
@@ -169,6 +177,8 @@ def retrieve_issuer_metadata(
         for cred_config_id in credential_configuration_ids
     ]
     logger.info(f"cred_configs: {cred_configs}")
+    if verbose:
+        logger.info(f"issuer_config: {issuer_config}")
 
     return (
         issuer_config["pushed_authorization_request_endpoint"],
@@ -181,7 +191,7 @@ def retrieve_issuer_metadata(
 
 def auth_request(
     pushed_auth_endpoint: str, auth_endpoint: str, state: str, scope: list[str]
-) -> tuple[requests.Session, str]:
+) -> tuple[requests.Session, str, Response]:
     logger.info(
         f"Authorize using auth endpoints: {pushed_auth_endpoint},"
         f"{auth_endpoint}"
@@ -208,10 +218,12 @@ def auth_request(
         "code_challenge_method": "S256",
         "code_challenge": code_challenge,
         "client_id": client_id,
-        "scope": scope,
+        "scope": get_scope(issuer_type, scope),
         "state": state,
         "redirect_uri": redirect_uri,
     }
+    if issuer_type == IssuerType.GRNET:
+        params |= {"backend": "dummy", "user_id": "1"}
     r = s.post(
         pushed_auth_endpoint,
         data=params,
@@ -220,6 +232,9 @@ def auth_request(
     )
     if r.status_code != requests.codes.ok:  # 200
         logger.error(f"Pushed authorization failed ({r.status_code}). Exit.")
+        if verbose:
+            logger.error(params)
+            logger.error(r.json())
         wallet_exit()
     logger.info(f"{r}, {r.reason}, {r.json()}, {r.headers}")
     request_uri = r.json()["request_uri"]
@@ -233,10 +248,12 @@ def auth_request(
     }
     r = s.get(auth_endpoint, params=params, verify=ssl_verify)
     if r.status_code != requests.codes.ok:  # 200
+        if verbose:
+            logger.info(r.json())
         logger.error(f"Authorization failed ({r.status_code}). Exit.")
         wallet_exit()
 
-    return s, code_verifier
+    return s, code_verifier, r
 
 
 def fill_in_ui_forms(
@@ -347,11 +364,20 @@ def confirm_credential_data(s: requests.Session, user_id: str) -> dict:
     return auth_params
 
 
+def get_scope(issuer_type: IssuerType, basic_scope: str):
+    if issuer_type == IssuerType.GRNET:
+        return f"dilosi govgr_login openid profile provider {basic_scope}"
+    else:
+        return basic_scope
+
+
 def request_token(
     token_endpoint: str,
     s: requests.Session,
     auth_params: dict,
     code_verifier: str,
+    scope: str,
+    issuer_type: IssuerType,
 ) -> tuple[str, str]:
     redirect_uri = config["auth_endpoint"]
     params = {
@@ -361,6 +387,9 @@ def request_token(
         "redirect_uri": redirect_uri,
         "code_verifier": code_verifier,
     }
+    if issuer_type == IssuerType.GRNET:
+        params["client_secret"] = auth_params["client_secret"]
+        params["scope"] = get_scope(issuer_type, scope)
     r = s.post(token_endpoint, data=params, verify=ssl_verify)
     if r.status_code != requests.codes.ok:  # 200
         logger.error(f"Token request failed ({r.status_code}). Exit.")
@@ -379,6 +408,8 @@ def request_credential(
     token_type: str,
     docformat: str,
     doctype: str,
+    scope: str,
+    issuer_type: IssuerType,
 ) -> dict:
     http_headers = {
         "Accept": "application/json",
@@ -390,6 +421,10 @@ def request_credential(
         "format": docformat,
         "doctype": doctype,
     }
+    if issuer_type == IssuerType.GRNET:
+        params["scope"] = get_scope(issuer_type, scope)
+    if verbose:
+        logger.info(f"credential request params: {params}")
     r = s.post(
         credential_endpoint,
         json=params,
@@ -421,6 +456,8 @@ def request_credential(
         verify=ssl_verify,
     )
     if r.status_code != requests.codes.ok:  # 200
+        if verbose:
+            logger.info(r.json())
         logger.error(f"Credential request failed ({r.status_code}). Exit.")
         wallet_exit()
     credential = r.json()
@@ -498,6 +535,23 @@ def wallet_exit() -> None:
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--verbose",
+        action="store_true",
+        help="Log more information",
+    )
+    parser.add_argument(
+        "--issuer-type",
+        type=str,
+        default=IssuerType.REFERENCE_IMPLEMENTATION.name,
+        choices=[it.name for it in IssuerType],
+    )
+    args = parser.parse_args()
+    verbose = args.verbose
+
+    issuer_type: IssuerType = IssuerType[args.issuer_type]
+
     logger.info("OIDC4VC draft 14, 1 October 2024")
     logger.info(
         "https://openid.github.io/OpenID4VCI/"
@@ -536,19 +590,28 @@ if __name__ == "__main__":
         )
 
         # Authorization: Diagram step 3, document section 5
-        session, code_verifier = auth_request(
+        session, code_verifier, auth_resp = auth_request(
             pushed_auth_endpoint, auth_endpoint, state, scope
         )
-        auth_params = fill_in_ui_forms(session, credential_configuration_id)
+        if verbose:
+            logger.info(f"auth_resp: {auth_resp.json()}")
+        if issuer_type == IssuerType.REFERENCE_IMPLEMENTATION:
+            auth_params = fill_in_ui_forms(session, credential_configuration_id)
+        elif issuer_type == IssuerType.GRNET:
+            auth_params = auth_resp.json()
+            auth_params["client_id"] = config["client_id"]
+            auth_params["client_secret"] = config["client_secret"]
+        else:
+            raise RuntimeError(f"Unsupported issuer type: {issuer_type.name}")
 
         # Token: Diagram step 5, document section 6
         token, token_type = request_token(
-            token_endpoint, session, auth_params, code_verifier
+            token_endpoint, session, auth_params, code_verifier, scope, issuer_type
         )
 
         # Credential: Diagram step 6, document section 7
         credential = request_credential(
-            credential_endpoint, session, token, token_type, docformat, doctype
+            credential_endpoint, session, token, token_type, docformat, doctype, scope, issuer_type
         )
 
         logger.info("Received credential")
