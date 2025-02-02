@@ -388,7 +388,7 @@ def request_token(
         "code_verifier": code_verifier,
     }
     if issuer_type == IssuerType.GRNET:
-        params["client_secret"] = auth_params["client_secret"]
+        # params["client_secret"] = auth_params["client_secret"]
         params["scope"] = get_scope(issuer_type, scope)
     r = s.post(token_endpoint, data=params, verify=ssl_verify)
     if r.status_code != requests.codes.ok:  # 200
@@ -600,7 +600,7 @@ if __name__ == "__main__":
         elif issuer_type == IssuerType.GRNET:
             auth_params = auth_resp.json()
             auth_params["client_id"] = config["client_id"]
-            auth_params["client_secret"] = config["client_secret"]
+            # auth_params["client_secret"] = config["client_secret"]
         else:
             raise RuntimeError(f"Unsupported issuer type: {issuer_type.name}")
 

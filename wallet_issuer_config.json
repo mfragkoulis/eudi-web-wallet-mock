@@ -1,6 +1,5 @@
 {
 	"client_id": "eudiw_login",
-	"client_secret": "secret",
 	"issuer_url": "https://localhost/",
 	"auth_endpoint": "https://localhost:5000/auth",
 	"auth_endpoint_debug": false,
