@@ -33,6 +33,12 @@ Update the host IP so that it can be correctly detected by the application:
 ./resolve-ip.sh
 ```
 
+Or, to use a hostname, e.g., "https://localhost":
+
+```bash
+echo 'https://localhost' > .config.ip
+```
+
 Run the application:
 
 ```bash
