@@ -1,25 +1,23 @@
 import argparse
 import base64
-
-from cryptography.hazmat.primitives import serialization
-from datetime import datetime, timezone
-from typing import Optional
-
-from flask import Flask, jsonify, make_response, request, Response
 import hashlib
 import json
-import jwt
 import logging
-from multiprocessing import Process, set_start_method
-
 import os
 import pprint
 import re
 import requests
 import time
 import urllib
-from urllib.parse import urlparse
 import urllib3
+from datetime import datetime, timezone
+from multiprocessing import Process, set_start_method
+from typing import Optional
+from urllib.parse import urlparse
+
+import jwt
+from cryptography.hazmat.primitives import serialization
+from flask import Flask, jsonify, make_response, request, Response
 
 logger = logging.getLogger("mock-wallet")
 logging.basicConfig(level=logging.INFO)
