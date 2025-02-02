@@ -1,18 +1,57 @@
-import base64
-import chardet
+# import base64
+# import chardet
 #import cbor2
 import json
 import logging
-import os
+# import os
 import pprint
 import requests
-import sys
+# import sys
+import urllib3
+from multiprocessing import Process, set_start_method
+from urllib.parse import urlparse
+from typing import Optional
+
+from flask import Flask, jsonify, make_response, request, Response
 
 
 logger = logging.getLogger("mock-wallet")
 logging.basicConfig(level=logging.INFO)
 
 config = {}
+
+ssl_verify = False
+# Silence warning regarding the absence of SSL certificate check.
+if not ssl_verify:
+    urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+config = {}
+p: Optional[Process] = None
+
+# Need to inherit unpicklable local objects and
+# internal file descriptors from parent process.
+set_start_method("fork")
+
+# Run wallet metadata endpoint with Flask in separate process.
+app = Flask(__name__)
+
+
+def start_wallet_metadata_endpoint() -> None:
+    global p
+    metadata_endpoint = config["metadata_endpoint"]
+    parsed_endpoint = urlparse(metadata_endpoint)
+    host, port = parsed_endpoint.hostname, parsed_endpoint.port
+    context = (
+        config["certificate_file"],
+        config["certificate_private_key_file"],
+    )
+    kwargs = {
+        "host": host,
+        "port": port,
+        "debug": False,
+        "ssl_context": context,
+    }
+    p = Process(target=app.run, kwargs=kwargs)
+    p.start()
 
 
 def test_call_parameters(method: str, payload: dict, headers: dict):
@@ -174,6 +213,21 @@ def get_new_revocation_data():
     logger.info(f'POST uri={uri_index["uri"]}, index={uri_index["index"]}')
 
 
+@app.route("/metadata", methods=["GET"])
+def wallet_metadata() -> Response:
+    metadata = {
+        "authorization_endpoint": "eudi-openid4vp://",
+        "client_id_schemes_supported": "x509_san_dns",
+        "response_types_supported": ["vp_token"],
+        "vp_formats_supported": {
+            "mso_mdoc": {
+                "alg_values_supported": ["ES256"]
+            },
+        },
+    }
+    return make_response(jsonify(metadata), 200)
+
+
 if __name__ == "__main__":
     with open("wallet_verifier_config.json") as f:
         config = json.load(f)
@@ -184,6 +238,9 @@ if __name__ == "__main__":
         f"vp_token_valid: {config['vp_token_valid']}\n"
         f"new_revocation_data: {config['want_new_revocation_data']}"
     )
+
+    logger.info("Start wallet metadata endpoint in separate process.")
+    start_wallet_metadata_endpoint()
 
     if config["want_new_revocation_data"]:
         get_new_revocation_data()
