@@ -1,5 +1,9 @@
 #!/bin/bash
 
+hostname -I | awk '{print $1}' > .config.ip
+exit
+
+# legacy
 interface=""
 if ip link show eth0 > /dev/null 2>&1; then
     interface="eth0"
