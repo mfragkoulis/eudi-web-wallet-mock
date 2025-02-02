@@ -4,7 +4,6 @@ import hashlib
 import json
 import logging
 import os
-from os.path import dirname, join, realpath
 import pprint
 import re
 import requests
@@ -13,6 +12,7 @@ import urllib
 import urllib3
 from datetime import datetime, timezone
 from multiprocessing import Process, set_start_method
+from os.path import dirname, join, realpath
 from typing import Optional
 from urllib.parse import urlparse
 
