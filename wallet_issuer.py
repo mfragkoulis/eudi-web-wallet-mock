@@ -514,6 +514,11 @@ if __name__ == "__main__":
         action="store_true",
         help="Log more information",
     )
+    parser.add_argument(
+        "--credential-output",
+        help="Output file for credential",
+        default="credential.out",
+    )
     args = parser.parse_args()
     verbose = args.verbose
 
@@ -572,5 +577,9 @@ if __name__ == "__main__":
 
         logger.info("Received credential")
         logger.info(f"{pprint.pprint(credential)}")
+
+        with open(args.credential_output, "w") as f:
+            f.write(credential["credential"])
+        logger.info(f"Credential written to {args.credential_output}")
 
     stop_wallet_auth_endpoint()
