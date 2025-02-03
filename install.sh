@@ -1,6 +1,6 @@
 #/usr/bin/env bash
 
-curl -sSL https://install.python-poetry.org | python3 -
+curl -sSL https://install.python-poetry.org | python3.11 -
 echo 'export PATH="/home/ubuntu/.local/bin:$PATH"' >> ~/.bash_profile
 . ~/.bash_profile
 poetry self add poetry-plugin-shell
