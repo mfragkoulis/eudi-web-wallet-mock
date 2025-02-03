@@ -1,15 +1,18 @@
-# import base64
+import argparse
+import base64
 # import chardet
-#import cbor2
+import cbor2
 import json
 import logging
 # import os
 import pprint
 import requests
 # import sys
+import time
 import urllib3
+from enum import Enum
 from multiprocessing import Process, set_start_method
-from urllib.parse import urlparse
+from urllib.parse import parse_qs, urlparse
 from typing import Optional
 
 from flask import Flask, jsonify, make_response, request, Response
@@ -33,6 +36,11 @@ set_start_method("fork")
 
 # Run wallet metadata endpoint with Flask in separate process.
 app = Flask(__name__)
+
+
+class VerifierType(Enum):
+    REFERENCE_IMPLEMENTATION = 1
+    PLAYGROUND = 2
 
 
 def start_wallet_metadata_endpoint() -> None:
@@ -229,6 +237,16 @@ def wallet_metadata() -> Response:
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--verifier-type",
+        help="Verifier type",
+        default=VerifierType.REFERENCE_IMPLEMENTATION.name,
+        choices=[it.name for it in VerifierType],
+    )
+    args = parser.parse_args()
+    verifier_type: VerifierType = VerifierType[args.verifier_type]
+
     with open("wallet_verifier_config.json") as f:
         config = json.load(f)
 
@@ -246,9 +264,76 @@ if __name__ == "__main__":
         get_new_revocation_data()
         exit(0)
 
-    transaction_id, presentation_id = init_transaction()
-    get_auth_request(transaction_id)
-    get_presentation_def(transaction_id)
-    response_code = send_wallet_response(transaction_id)
-    get_wallet_response(presentation_id, response_code)
-    get_presentation_event_log(presentation_id)
+    with open("qr_code.txt", "r") as f:
+        qr_code = f.read()
+
+    if verifier_type == VerifierType.PLAYGROUND:
+        logger.info(f"Using QR code: {qr_code}")
+        url_no_prefix = qr_code.split(":", maxsplit=1)[1]
+        parsed = urlparse(url_no_prefix)
+        params = parse_qs(parsed.query)
+        request_uri = params["request_uri"][0]
+        request_response = requests.get(request_uri)
+        print("Request:", request_response.text)
+        token = request_response.text.split(".")[1]
+        token = token + "=" * (4 - len(token) % 4)
+        auth_request = json.loads(base64.b64decode(token))
+        print(json.dumps(auth_request, indent=4))
+
+        # datastr = json.dumps({"id": "123456"})
+        # vp_token = base64.urlsafe_b64encode(datastr.encode("utf-8")).decode().rstrip("=")
+        with open("credential.out", "r") as f:
+            credential = f.read().rstrip("=")
+
+        now = time.time()
+        vp_token = {
+            "version": "1.0",
+            "status": 0,
+            "documents": [
+                {
+                    "eu.europa.ec.eudi.pid.1": {
+                        "issuerSigned": {
+                            "nameSpaces": {
+                                "eu.europa.ec.eudi.pid.1": None,
+                            }
+                        },
+                        "deviceSigned": {},
+                    }
+                }
+            ],
+        }
+        vp_token_encoded = base64.urlsafe_b64encode(cbor2.dumps(vp_token)).decode().rstrip("=")
+        response_headers = {
+            "Content-type": "application/x-www-form-urlencoded",
+            "Accept": "application/json",
+        }
+        response = requests.post(
+            auth_request["response_uri"],
+            headers=response_headers,
+            data={
+                "state": auth_request["state"],
+                "vp_token": vp_token_encoded,
+                "presentation_submission": json.dumps(
+                    {
+                        "descriptor_map": [
+                            {
+                                "id": "dummy",
+                                "path": "$.verifiableCredential[0]",
+                                "format": "ldp_vc",
+                            }
+                        ]
+                    }
+                ),
+            }
+        )
+        print(f"vp_token: {vp_token}")
+        print("Response:")
+        print(response.content)
+
+    elif verifier_type == VerifierType.REFERENCE_IMPLEMENTATION:
+        transaction_id, presentation_id = init_transaction()
+        get_auth_request(transaction_id)
+        get_presentation_def(transaction_id)
+        response_code = send_wallet_response(transaction_id)
+        get_wallet_response(presentation_id, response_code)
+        get_presentation_event_log(presentation_id)
