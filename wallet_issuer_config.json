@@ -1,9 +1,9 @@
 {
 	"client_id": "mock-wallet<->issuer",
-	"issuer_url": "https://192.168.1.111:5000",
+	"issuer_url": "https://83.212.72.114:5000",
 	"auth_endpoint": "https://192.168.1.111:6000/auth",
 	"auth_endpoint_debug": false,
-	"registration_endpoint": "https://192.168.1.111:5000/registration",
+	"registration_endpoint": "https://83.212.72.114:5000/registration",
 	"certificate_private_key_file": "data/ec_private_key.pem",
 	"certificate_file": "data/mock_wallet_cert.pem",
 	"credential_offer_file": "data/credential_offer_mdl_mdoc.json",
