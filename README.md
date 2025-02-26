@@ -20,6 +20,8 @@ Setup poetry for dependency management, install dependencies and create certific
 ./install.sh
 ```
 
+Note that the certificate is bound to the current IP (or the optional hostname argument to install.sh) and thus setup must run again if the IP or the hostname changes.
+
 * [Mock Wallet - Issuer](#mock-wallet---issuer)
 * [Mock Wallet - Verifier](#mock-wallet---verifier)
 

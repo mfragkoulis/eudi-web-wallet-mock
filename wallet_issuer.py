@@ -38,9 +38,9 @@ set_start_method("fork")
 app = Flask(__name__)
 
 
-def start_wallet_auth_endpoint() -> None:
+def start_wallet_auth_endpoint(auth_endpoint: str) -> None:
     global p
-    auth_endpoint = config["auth_endpoint"]
+    print(f"Starting authentication endpoint: {auth_endpoint}")
     parsed_endpoint = urlparse(auth_endpoint)
     host, port = parsed_endpoint.hostname, parsed_endpoint.port
     debug = config["auth_endpoint_debug"]
@@ -84,8 +84,8 @@ def auth() -> Response:
 
 
 # Issuer uses OpenID Connect Registration.
-def register_wallet() -> dict[str, str]:
-    params = {"redirect_uris": config["auth_endpoint"]}
+def register_wallet(wallet_auth_endpoint: str) -> dict[str, str]:
+    params = {"redirect_uris": wallet_auth_endpoint}
     r = requests.get(
         config['registration_endpoint'], params=params, verify=ssl_verify
     )
@@ -181,11 +181,11 @@ def retrieve_issuer_metadata(
 
 
 def auth_request(
-    pushed_auth_endpoint: str, auth_endpoint: str, state: str, scope: list[str]
+    pushed_auth_endpoint: str, auth_endpoint: str, wallet_auth_endpoint: str, state: str, scope: list[str]
 ) -> tuple[requests.Session, str]:
     logger.info(
-        f"Authorize using auth endpoints: {pushed_auth_endpoint},"
-        f"{auth_endpoint}"
+        f"Authorize using auth endpoints: {pushed_auth_endpoint}, "
+        f"{auth_endpoint}, {wallet_auth_endpoint}"
     )
     http_headers = {
         "Accept": "application/json",
@@ -194,7 +194,7 @@ def auth_request(
     }
     scope = scope
     client_id = config["client_id"]
-    redirect_uri = config["auth_endpoint"]
+    redirect_uri = wallet_auth_endpoint
 
     code_verifier = base64.urlsafe_b64encode(os.urandom(40)).decode("utf-8")
     code_verifier = re.sub("[^a-zA-Z0-9]+", "", code_verifier)
@@ -355,16 +355,16 @@ def confirm_credential_data(s: requests.Session, user_id: str) -> dict:
 
 def request_token(
     token_endpoint: str,
+    wallet_auth_endpoint: str,
     s: requests.Session,
     auth_params: dict,
     code_verifier: str,
 ) -> tuple[str, str]:
-    redirect_uri = config["auth_endpoint"]
     params = {
         "grant_type": "authorization_code",
         "client_id": auth_params["client_id"],
         "code": auth_params["code"],
-        "redirect_uri": redirect_uri,
+        "redirect_uri": wallet_auth_endpoint,
         "code_verifier": code_verifier,
     }
     r = s.post(token_endpoint, data=params, verify=ssl_verify)
@@ -514,6 +514,12 @@ if __name__ == "__main__":
         action="store_true",
         help="Log more information",
     )
+    parser.add_argument(
+        "--wallet-auth-endpoint",
+        type=str,
+        help="Wallet authentication endpoint to start",
+        default="https://snf-895798.vm.okeanos.grnet.gr:6000/auth",
+    )
     args = parser.parse_args()
     verbose = args.verbose
 
@@ -528,10 +534,10 @@ if __name__ == "__main__":
         config = json.load(f)
 
     logger.info("Start wallet auth endpoint in separate process.")
-    start_wallet_auth_endpoint()
+    start_wallet_auth_endpoint(args.wallet_auth_endpoint)
 
     # Assume issuer is also wallet provider. Register wallet.
-    registration = register_wallet()
+    registration = register_wallet(args.wallet_auth_endpoint)
 
     # Credential offer: Diagram step 1b, document section 4
     state, credential_configuration_ids = get_credential_offer()
@@ -556,13 +562,13 @@ if __name__ == "__main__":
 
         # Authorization: Diagram step 3, document section 5
         session, code_verifier = auth_request(
-            pushed_auth_endpoint, auth_endpoint, state, scope
+            pushed_auth_endpoint, auth_endpoint, args.wallet_auth_endpoint, state, scope
         )
         auth_params = fill_in_ui_forms(session, credential_configuration_id)
 
         # Token: Diagram step 5, document section 6
         token, token_type = request_token(
-            token_endpoint, session, auth_params, code_verifier
+            token_endpoint, args.wallet_auth_endpoint, session, auth_params, code_verifier
         )
 
         # Credential: Diagram step 6, document section 7

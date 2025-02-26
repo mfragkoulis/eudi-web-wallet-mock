@@ -1,4 +1,13 @@
-#/usr/bin/env bash
+#!/usr/bin/env bash
+
+if [ "$1" == "-h" ]; then
+    echo "Usage:"
+    echo "install.sh [HOSTNAME]"
+    echo
+    echo "    HOSTNAME     the IP or host name to use to start the callback server"
+    echo "                 (example: snf-895798.vm.okeanos.grnet.gr)"
+    exit
+fi
 
 curl -sSL https://install.python-poetry.org | python3 -
 echo 'export PATH="/home/ubuntu/.local/bin:$PATH"' >> ~/.bash_profile
@@ -7,5 +16,14 @@ poetry self add poetry-plugin-shell
 poetry shell
 poetry install
 
+if [ "$1" == "" ]; then
+    ./resolve-ip.sh > .config.ip
+    HOSTNAME=$(cat .config.ip)
+else
+    HOSTNAME="$1"
+fi
+echo "Deploying at: ${HOSTNAME}"
+
+echo "Generating TLS certificate..."
 openssl ecparam -out data/ec_private_key.pem -name prime256v1 -genkey
-openssl req -new -key data/ec_private_key.pem -x509 -nodes -days 365 -subj "/CN=snf-895798.vm.okeanos.grnet.gr" -out data/mock_wallet_cert.pem
+openssl req -new -key data/ec_private_key.pem -x509 -nodes -days 365 -subj "/CN=${HOSTNAME}" -out data/mock_wallet_cert.pem
