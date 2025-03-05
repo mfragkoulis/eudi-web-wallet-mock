@@ -38,6 +38,9 @@ set_start_method("fork")
 app = Flask(__name__)
 
 
+DEFAULT_ISSUER="https://83.212.72.114:5000"
+# DEFAULT_ISSUER="https://snf-895798.vm.okeanos.grnet.gr:5000"
+
 def start_wallet_auth_endpoint(auth_endpoint: str) -> None:
     global p
     print(f"Starting authentication endpoint: {auth_endpoint}")
@@ -106,8 +109,6 @@ def get_credential_offer() -> tuple[str, list[str]]:
     with open(config["credential_offer_file"]) as f:
         credential_offer = json.load(f)
 
-    # Overrides setting in main config file. Design decision.
-    config["issuer_url"] = credential_offer["credential_issuer"]
     issuer_state = credential_offer["grants"]["authorization_code"][
         "issuer_state"
     ]
@@ -508,7 +509,13 @@ def wallet_exit() -> None:
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
+    try:
+        with open(".config.ip") as local_ip_file:
+            default_wallet_ip = local_ip_file.read().strip()
+    except FileNotFoundError:
+        default_wallet_ip = "snf-895798.vm.okeanos.grnet.gr"
+
+    parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument(
         "--verbose",
         action="store_true",
@@ -518,7 +525,17 @@ if __name__ == "__main__":
         "--wallet-auth-endpoint",
         type=str,
         help="Wallet authentication endpoint to start",
-        default="https://snf-895798.vm.okeanos.grnet.gr:6000/auth",
+        default=f"https://{default_wallet_ip}:6000/auth",
+    )
+    parser.add_argument(
+        "--issuer-url",
+        help="The URL of the issuer",
+        default=DEFAULT_ISSUER,
+    )
+    parser.add_argument(
+        "--registration-endpoint",
+        help="The URL of the registration endpoint",
+        default=f"{DEFAULT_ISSUER}/registration",
     )
     args = parser.parse_args()
     verbose = args.verbose
@@ -532,6 +549,9 @@ if __name__ == "__main__":
     # Load wallet config
     with open("wallet_issuer_config.json") as f:
         config = json.load(f)
+
+    config["issuer_url"] = args.issuer_url
+    config["registration_endpoint"] = args.registration_endpoint
 
     logger.info("Start wallet auth endpoint in separate process.")
     start_wallet_auth_endpoint(args.wallet_auth_endpoint)

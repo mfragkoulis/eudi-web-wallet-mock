@@ -1,8 +1,6 @@
 {
 	"client_id": "mock-wallet<->issuer",
-	"issuer_url": "https://snf-895798.vm.okeanos.grnet.gr:5000",
 	"auth_endpoint_debug": false,
-	"registration_endpoint": "https://snf-895798.vm.okeanos.grnet.gr:5000/registration",
 	"certificate_private_key_file": "data/ec_private_key.pem",
 	"certificate_file": "data/mock_wallet_cert.pem",
 	"credential_offer_file": "data/credential_offer_mdl_mdoc.json",
